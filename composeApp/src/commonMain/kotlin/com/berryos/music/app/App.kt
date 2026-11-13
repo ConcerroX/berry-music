@@ -1,23 +1,36 @@
 package com.berryos.music.app
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Divider
+import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.ListItem
 import androidx.compose.material.LocalContentColor
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.NavigationRail
 import androidx.compose.material.NavigationRailDefaults
 import androidx.compose.material.NavigationRailItem
+import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
+import androidx.compose.material.rememberDrawerState
 import androidx.compose.material.rememberModalBottomSheetState
+import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -89,11 +103,14 @@ import com.berryos.music.resources.ic_filled_home
 import com.berryos.music.resources.ic_filled_music_note
 import com.berryos.music.resources.ic_filled_people
 import com.berryos.music.resources.ic_filled_queue_music
+import com.berryos.music.resources.ic_menu
 import com.berryos.music.resources.ic_outlined_album
 import com.berryos.music.resources.ic_outlined_home
 import com.berryos.music.resources.ic_outlined_music_note
 import com.berryos.music.resources.ic_outlined_people
 import com.berryos.music.resources.ic_outlined_queue_music
+import com.berryos.music.resources.ic_search
+import com.berryos.music.resources.ic_settings
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -189,6 +206,8 @@ private fun createTabs(
     TabItem("Artists", Res.drawable.ic_filled_people, Res.drawable.ic_outlined_people, artists),
 )
 
+@Suppress("LongMethod")
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun AppChrome(
     tabs: List<TabItem>,
@@ -204,52 +223,119 @@ private fun AppChrome(
     val isRoot = selectedTab.backStack.size == 1
     val title = routeTitle(selectedTab.backStack.lastOrNull())
     val onBack = if (isRoot) null else actions.back
+    val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
+    val drawerScope = rememberCoroutineScope()
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
-        if (compact) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                AppTopBar(title, onRefresh.takeIf { isRoot }, onBack)
-                AppNavDisplay(selectedTab.backStack, actions, libraryState, onRefresh, Modifier.weight(1f))
-                if (playbackState.currentTrack != null) {
-                    MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
-                }
-                if (isRoot) {
-                    RBottomNavigation(itemCount = tabs.size) {
-                        tabs.forEachIndexed { index, tab ->
-                            RBottomNavigationItem(
-                                selected = index == selectedTabIndex,
-                                onClick = { onSelectTab(index) },
-                                icon = { TabIcon(tab, index == selectedTabIndex) },
-                                label = { Text(tab.label) },
-                            )
-                        }
-                    }
-                }
-            }
+        val drawerEnabled = isRoot && compact
+        val openDrawer: (() -> Unit)? = if (drawerEnabled) {
+            { drawerScope.launch { scaffoldState.drawerState.open() } }
         } else {
-            Row(modifier = Modifier.fillMaxSize()) {
-                if (isRoot) {
-                    NavigationRail(windowInsets = NavigationRailDefaults.windowInsets) {
-                        tabs.forEachIndexed { index, tab ->
-                            NavigationRailItem(
-                                selected = index == selectedTabIndex,
-                                onClick = { onSelectTab(index) },
-                                icon = { TabIcon(tab, index == selectedTabIndex) },
-                                label = { Text(tab.label) },
-                            )
-                        }
-                    }
+            null
+        }
+        Scaffold(
+            scaffoldState = scaffoldState,
+            drawerGesturesEnabled = drawerEnabled,
+            drawerContent = {
+                AppDrawer(tabs, selectedTabIndex, actions, onSelectTab) {
+                    drawerScope.launch { scaffoldState.drawerState.close() }
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    AppTopBar(title, onRefresh.takeIf { isRoot }, onBack)
+            },
+        ) { _ ->
+            if (compact) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    AppTopBar(title, onRefresh.takeIf { isRoot }, onBack, openDrawer)
                     AppNavDisplay(selectedTab.backStack, actions, libraryState, onRefresh, Modifier.weight(1f))
                     if (playbackState.currentTrack != null) {
                         MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
+                    }
+                    if (isRoot) {
+                        RBottomNavigation(itemCount = tabs.size) {
+                            tabs.forEachIndexed { index, tab ->
+                                RBottomNavigationItem(
+                                    selected = index == selectedTabIndex,
+                                    onClick = { onSelectTab(index) },
+                                    icon = { TabIcon(tab, index == selectedTabIndex) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    if (isRoot) {
+                        NavigationRail(windowInsets = NavigationRailDefaults.windowInsets) {
+                            tabs.forEachIndexed { index, tab ->
+                                NavigationRailItem(
+                                    selected = index == selectedTabIndex,
+                                    onClick = { onSelectTab(index) },
+                                    icon = { TabIcon(tab, index == selectedTabIndex) },
+                                    label = { Text(tab.label) },
+                                )
+                            }
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        AppTopBar(title, onRefresh.takeIf { isRoot }, onBack, null)
+                        AppNavDisplay(selectedTab.backStack, actions, libraryState, onRefresh, Modifier.weight(1f))
+                        if (playbackState.currentTrack != null) {
+                            MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
+                        }
                     }
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun AppDrawer(
+    tabs: List<TabItem>,
+    selectedTabIndex: Int,
+    actions: AppActions,
+    onSelectTab: (Int) -> Unit,
+    onClose: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxHeight().width(280.dp).padding(vertical = 16.dp)) {
+        Text(
+            text = "Berry Music",
+            style = MaterialTheme.typography.h6,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        tabs.forEachIndexed { index, tab ->
+            DrawerItem(tab.label, tab.filledIcon, index == selectedTabIndex) {
+                onSelectTab(index)
+                onClose()
+            }
+        }
+        Divider(modifier = Modifier.padding(vertical = 8.dp))
+        DrawerItem("Search", Res.drawable.ic_search) {
+            actions.open(SearchRoute)
+            onClose()
+        }
+        DrawerItem("Settings", Res.drawable.ic_settings) {
+            actions.open(SettingsRoute)
+            onClose()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun DrawerItem(label: String, icon: DrawableResource, selected: Boolean = false, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable(onClick = onClick),
+        icon = { Icon(painter = painterResource(icon), contentDescription = null) },
+        text = {
+            Text(
+                text = label,
+                color = if (selected) MaterialTheme.colors.primary else Color.Unspecified,
+            )
+        },
+    )
 }
 
 private val staticRouteTitles: Map<NavKey, String> = mapOf(
@@ -280,10 +366,11 @@ private fun routeTitle(route: NavKey?): String {
 }
 
 @Composable
-private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Unit)?) {
-    RTopAppBar(
-        title = { Text(title) },
-        navigationIcon = onBack?.let { back ->
+private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Unit)?, onMenu: (() -> Unit)?) {
+    val back = onBack
+    val menu = onMenu
+    val navigationIcon: (@Composable () -> Unit)? = when {
+        back != null -> {
             {
                 IconButton(onClick = back) {
                     Icon(
@@ -292,7 +379,24 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
                     )
                 }
             }
-        },
+        }
+
+        menu != null -> {
+            {
+                IconButton(onClick = menu) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_menu),
+                        contentDescription = "Menu",
+                    )
+                }
+            }
+        }
+
+        else -> null
+    }
+    RTopAppBar(
+        title = { Text(title) },
+        navigationIcon = navigationIcon,
         actions = {
             onRefresh?.let { refresh ->
                 TextButton(
