@@ -15,7 +15,16 @@ sealed interface AppRoute : NavKey
 data object HomeRoute : AppRoute
 
 @Serializable
-data object LibraryRoute : AppRoute
+data object AlbumsRoute : AppRoute
+
+@Serializable
+data object SongsRoute : AppRoute
+
+@Serializable
+data object PlaylistsRoute : AppRoute
+
+@Serializable
+data object ArtistsRoute : AppRoute
 
 @Serializable
 data object SearchRoute : AppRoute

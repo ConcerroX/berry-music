@@ -10,7 +10,6 @@ import com.berryos.music.core.designsystem.PlaceholderScreen
 @Composable
 fun ArtistScreen(artistId: String, actions: AppActions) {
     PlaceholderScreen(title = "Artist", subtitle = "Artist id: $artistId") {
-        TextButton(onClick = actions.back) { Text("Back") }
         TextButton(onClick = { actions.open(AlbumRoute("demo-album")) }) { Text("Album detail") }
     }
 }

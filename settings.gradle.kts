@@ -29,3 +29,9 @@ rootProject.name = "berry-music"
 
 include(":composeApp")
 include(":androidApp")
+
+includeBuild("../../../Ripple Design/rui-compose") {
+    dependencySubstitution {
+        substitute(module("art.rippledesign:compose-rui")).using(project(":"))
+    }
+}

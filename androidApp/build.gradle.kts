@@ -35,6 +35,25 @@ dependencies {
     detektPlugins(libs.detekt.rules.ktlint.wrapper)
 }
 
+androidComponents {
+    onVariants { variant ->
+        val assetsDir = rootProject.file("composeApp/build/generated/compose/resourceGenerator/androidMain/assets")
+        variant.sources.assets?.addStaticSourceDirectory(assetsDir.absolutePath)
+    }
+}
+
+afterEvaluate {
+    val composeResourceTasks = listOf(
+        ":composeApp:copyAndroidMainComposeResourcesToAndroidAssets",
+        ":composeApp:prepareComposeResourcesTaskForCommonMain",
+        ":composeApp:convertXmlValueResourcesForCommonMain",
+        ":composeApp:copyNonXmlValueResourcesForCommonMain",
+    )
+    tasks.matching { task -> task.name.contains("merge") && task.name.contains("Assets") }.configureEach {
+        composeResourceTasks.forEach { taskPath -> dependsOn(taskPath) }
+    }
+}
+
 detekt {
     parallel.set(true)
     buildUponDefaultConfig.set(true)

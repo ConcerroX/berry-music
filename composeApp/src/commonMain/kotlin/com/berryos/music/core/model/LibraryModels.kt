@@ -1,0 +1,36 @@
+package com.berryos.music.core.model
+
+sealed interface SourceKey {
+    data object Local : SourceKey
+    data class Subsonic(val serverId: String) : SourceKey
+}
+
+data class Track(
+    val source: SourceKey,
+    val id: String,
+    val title: String,
+    val artist: String,
+    val artistId: String,
+    val album: String,
+    val albumId: String,
+    val durationMs: Long,
+    val trackNumber: Int,
+    val year: Int,
+)
+
+data class Album(
+    val source: SourceKey,
+    val id: String,
+    val title: String,
+    val artist: String,
+    val trackCount: Int,
+    val year: Int,
+)
+
+data class Artist(val source: SourceKey, val id: String, val name: String, val albumCount: Int, val trackCount: Int)
+
+data class LibrarySnapshot(
+    val tracks: List<Track> = emptyList(),
+    val albums: List<Album> = emptyList(),
+    val artists: List<Artist> = emptyList(),
+)

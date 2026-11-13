@@ -27,14 +27,22 @@ kotlin {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(compose.components.resources)
             implementation(compose.ui)
             implementation(libs.navigation3.ui)
             implementation(libs.lifecycle.viewmodel.navigation3)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation("art.rippledesign:compose-rui")
         }
 
         commonTest.dependencies {
             implementation(kotlin("test"))
+        }
+
+        androidMain.dependencies {
+            implementation(libs.androidx.media3.exoplayer)
+            implementation(libs.androidx.media3.session)
         }
     }
 }
@@ -55,4 +63,16 @@ detekt {
 
 dependencies {
     detektPlugins(libs.detekt.rules.ktlint.wrapper)
+}
+
+compose.resources {
+    packageOfResClass = "com.berryos.music.resources"
+}
+
+afterEvaluate {
+    tasks.named("copyAndroidMainComposeResourcesToAndroidAssets").configure {
+        val outputDir = project.layout.buildDirectory.dir("generated/compose/resourceGenerator/androidMain/assets")
+        val property = this::class.java.getMethod("getOutputDirectory").invoke(this) as org.gradle.api.file.DirectoryProperty
+        property.set(outputDir)
+    }
 }
