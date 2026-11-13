@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+**/build/
+.kotlin/
+local.properties
+
+# IDE
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+*.hprof
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AI assistant files (do not commit)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
