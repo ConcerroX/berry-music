@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -31,4 +32,11 @@ android {
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
+    detektPlugins(libs.detekt.rules.ktlint.wrapper)
+}
+
+detekt {
+    parallel.set(true)
+    buildUponDefaultConfig.set(true)
+    config.setFrom(rootProject.file("config/detekt/detekt.yml"))
 }

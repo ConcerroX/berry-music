@@ -1,0 +1,7 @@
+ktlint:
+  active: true
+  autoCorrect: false
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
