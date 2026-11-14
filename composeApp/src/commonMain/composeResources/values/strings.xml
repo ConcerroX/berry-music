@@ -79,8 +79,7 @@
     <string name="server_detail">Server detail</string>
     <string name="search_subtitle">Local and Subsonic search results.</string>
     <string name="playlists_subtitle">Playlist list.</string>
-    <string name="settings_subtitle">Appearance, playback, library, and servers.</string>
-    <string name="appearance_subtitle">Theme, accent color, and layout.</string>
+    <string name="collapse_player_on_pause">Collapse player when paused</string>
     <string name="playback_subtitle">Audio focus, resume, and crossfade.</string>
     <string name="library_subtitle">Scanning, filters, and excluded folders.</string>
     <string name="servers_subtitle">Subsonic server list and connection status.</string>

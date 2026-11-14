@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.berryos.music.app.App
 import com.berryos.music.core.auth.AndroidLogtoAuthController
+import com.berryos.music.core.datastore.DataStoreAppSettingsRepository
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LocalLibrarySource
 import com.berryos.music.core.library.SubsonicLibrarySource
@@ -59,10 +60,11 @@ class MainActivity : ComponentActivity() {
             ),
         )
         val playbackController = MediaSessionPlaybackController(applicationContext)
+        val settings = DataStoreAppSettingsRepository.get(applicationContext)
         playback = playbackController
         auth = authController
         setContent {
-            App(repository, playbackController, authController, mediaStoreChanges(applicationContext))
+            App(repository, playbackController, authController, mediaStoreChanges(applicationContext), settings)
         }
     }
 

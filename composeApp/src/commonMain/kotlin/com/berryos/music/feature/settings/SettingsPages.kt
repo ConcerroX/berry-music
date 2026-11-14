@@ -1,16 +1,25 @@
 package com.berryos.music.feature.settings
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ListItem
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.app.navigation.ServerEditRoute
+import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.about
 import com.berryos.music.resources.about_subtitle
-import com.berryos.music.resources.appearance
-import com.berryos.music.resources.appearance_subtitle
+import com.berryos.music.resources.collapse_player_on_pause
 import com.berryos.music.resources.library
 import com.berryos.music.resources.library_subtitle
 import com.berryos.music.resources.playback
@@ -24,10 +33,28 @@ import com.berryos.music.resources.servers_subtitle
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AppearanceScreen() {
-    PlaceholderScreen(
-        title = stringResource(Res.string.appearance),
-        subtitle = stringResource(Res.string.appearance_subtitle),
+fun AppearanceScreen(settings: AppSettingsRepository) {
+    val appSettings by settings.settings.collectAsState()
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            SwitchItem(
+                label = stringResource(Res.string.collapse_player_on_pause),
+                checked = appSettings.collapsePlayerOnPause,
+                onCheckedChange = settings::setCollapsePlayerOnPause,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun SwitchItem(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    ListItem(
+        modifier = Modifier.clickable { onCheckedChange(!checked) },
+        text = { Text(label) },
+        trailing = {
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        },
     )
 }
 

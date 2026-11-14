@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.androidx.media3.exoplayer)
             implementation(libs.androidx.media3.session)
             implementation(libs.androidx.palette)
+            implementation(libs.androidx.datastore.preferences.core)
             implementation(libs.logto.android)
             implementation(libs.ktor.client.okhttp)
         }
