@@ -8,4 +8,5 @@ class AppActions(
     val play: (List<Track>, Int) -> Unit,
     val togglePlayPause: () -> Unit,
     val next: () -> Unit,
+    val previous: () -> Unit,
 )

@@ -1,6 +1,7 @@
 package com.berryos.music.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.LocalContentColor
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.NavigationRail
@@ -31,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -65,6 +68,8 @@ import com.berryos.music.app.navigation.appRouteSerialization
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.designsystem.BerryTheme
+import com.berryos.music.core.designsystem.cachedCoverColors
+import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
@@ -105,6 +110,7 @@ import com.berryos.music.resources.ic_filled_music_note
 import com.berryos.music.resources.ic_filled_people
 import com.berryos.music.resources.ic_filled_queue_music
 import com.berryos.music.resources.ic_menu
+import com.berryos.music.resources.ic_more_vert
 import com.berryos.music.resources.ic_outlined_album
 import com.berryos.music.resources.ic_outlined_home
 import com.berryos.music.resources.ic_outlined_music_note
@@ -112,6 +118,7 @@ import com.berryos.music.resources.ic_outlined_people
 import com.berryos.music.resources.ic_outlined_queue_music
 import com.berryos.music.resources.library
 import com.berryos.music.resources.menu
+import com.berryos.music.resources.more_options
 import com.berryos.music.resources.playback
 import com.berryos.music.resources.playlist
 import com.berryos.music.resources.search
@@ -217,6 +224,7 @@ private fun AppShell(
         play = playback::play,
         togglePlayPause = playback::togglePlayPause,
         next = playback::next,
+        previous = playback::previous,
     )
     AppChrome(
         tabs,
@@ -267,7 +275,17 @@ private fun AppChrome(
 ) {
     val selectedTab = tabs[selectedTabIndex]
     val isRoot = selectedTab.backStack.size == 1
+    val transparentTopBar = selectedTab.backStack.lastOrNull() is AlbumRoute
     val title = routeTitle(selectedTab.backStack.lastOrNull())
+    val album = (selectedTab.backStack.lastOrNull() as? AlbumRoute)?.let { route ->
+        (libraryState as? LibraryUiState.Ready)?.snapshot?.albums?.firstOrNull { it.id == route.albumId }
+    }
+    val topBarContentColor = if (album == null) {
+        null
+    } else {
+        val fallbackColors = rememberDefaultCoverColors()
+        (album.coverUrl?.let(::cachedCoverColors) ?: fallbackColors)?.contentColor
+    }
     val onBack = if (isRoot) null else actions.back
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val drawerScope = rememberCoroutineScope()
@@ -290,8 +308,22 @@ private fun AppChrome(
         ) { _ ->
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    AppTopBar(title, onBack, openDrawer)
-                    TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
+                    if (transparentTopBar) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.fillMaxSize())
+                            AppTopBar(
+                                null,
+                                onBack,
+                                openDrawer,
+                                transparent = true,
+                                contentColor = topBarContentColor,
+                                onMore = {},
+                            )
+                        }
+                    } else {
+                        AppTopBar(title, onBack, openDrawer)
+                        TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
+                    }
                     if (playbackState.currentTrack != null) {
                         MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                     }
@@ -323,8 +355,22 @@ private fun AppChrome(
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        AppTopBar(title, onBack, null)
-                        TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
+                        if (transparentTopBar) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.fillMaxSize())
+                                AppTopBar(
+                                    null,
+                                    onBack,
+                                    null,
+                                    transparent = true,
+                                    contentColor = topBarContentColor,
+                                    onMore = {},
+                                )
+                            }
+                        } else {
+                            AppTopBar(title, onBack, null)
+                            TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
+                        }
                         if (playbackState.currentTrack != null) {
                             MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                         }
@@ -365,7 +411,14 @@ private fun routeTitle(route: NavKey?): String {
 }
 
 @Composable
-private fun AppTopBar(title: String, onBack: (() -> Unit)?, onMenu: (() -> Unit)?) {
+private fun AppTopBar(
+    title: String?,
+    onBack: (() -> Unit)?,
+    onMenu: (() -> Unit)?,
+    transparent: Boolean = false,
+    contentColor: Color? = null,
+    onMore: (() -> Unit)? = null,
+) {
     val back = onBack
     val menu = onMenu
     val navigationIcon: (@Composable () -> Unit)? = when {
@@ -393,10 +446,32 @@ private fun AppTopBar(title: String, onBack: (() -> Unit)?, onMenu: (() -> Unit)
 
         else -> null
     }
-    RTopAppBar(
-        title = { Text(title) },
-        navigationIcon = navigationIcon,
-    )
+    val more: (@Composable () -> Unit)? = onMore?.let { moreAction ->
+        {
+            IconButton(onClick = moreAction) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_more_vert),
+                    contentDescription = stringResource(Res.string.more_options),
+                )
+            }
+        }
+    }
+    if (transparent) {
+        RTopAppBar(
+            title = { title?.let { Text(it) } },
+            navigationIcon = navigationIcon,
+            actions = { more?.invoke() },
+            backgroundColor = Color.Transparent,
+            contentColor = contentColor ?: LocalContentColor.current,
+            elevation = 0.dp,
+        )
+    } else {
+        RTopAppBar(
+            title = { title?.let { Text(it) } },
+            navigationIcon = navigationIcon,
+            actions = { more?.invoke() },
+        )
+    }
 }
 
 @Composable
