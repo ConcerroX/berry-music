@@ -39,6 +39,7 @@ import com.berryos.music.app.navigation.SearchRoute
 import com.berryos.music.app.navigation.SettingsRoute
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
+import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.account_service_name
 import com.berryos.music.resources.add_account
@@ -280,19 +281,19 @@ private fun AccountItem(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.54f),
+                    color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
                 )
                 Text(
                     text = secondaryLabel,
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.54f),
+                    color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
                 )
             }
         } else {
             Text(
                 text = label,
                 style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.54f),
+                color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
             )
         }
     }
@@ -313,7 +314,7 @@ private fun AccountAvatar(icon: DrawableResource, avatarUrl: String?) {
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colors.onSurface.copy(alpha = 0.54f)),
+                .background(MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

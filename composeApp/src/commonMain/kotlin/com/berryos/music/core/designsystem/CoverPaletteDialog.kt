@@ -69,7 +69,6 @@ private val SWATCH_SIZE = 32.dp
 private val SWATCH_GAP = 16.dp
 private val SWATCH_ROW_SPACING = 4.dp
 private val SWATCH_ROW_VERTICAL_PADDING = 6.dp
-private const val MEDIUM_ALPHA = 0.54f
 private const val RGB_MASK = 0xFFFFFF
 private const val HEX_RADIX = 16
 private const val HEX_DIGITS = 6

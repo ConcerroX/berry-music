@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import coil3.Image
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.AlbumCover
+import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.designsystem.rememberAlbumCoverColors
 import com.berryos.music.core.model.Track
@@ -142,4 +143,3 @@ private fun TrackRow(track: Track, onClick: () -> Unit) {
 private val APP_BAR_HEIGHT = 56.dp
 private val TRACK_NUMBER_WIDTH = 56.dp
 private const val SCRIM_ALPHA = 0.30f
-private const val MEDIUM_ALPHA = 0.54f

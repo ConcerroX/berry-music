@@ -43,3 +43,9 @@ data class LibrarySnapshot(
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
 )
+
+fun LibrarySnapshot.album(source: SourceKey, albumId: String): Album? =
+    albums.firstOrNull { it.source == source && it.id == albumId }
+
+fun LibrarySnapshot.artist(source: SourceKey, artistId: String): Artist? =
+    artists.firstOrNull { it.source == source && it.id == artistId }

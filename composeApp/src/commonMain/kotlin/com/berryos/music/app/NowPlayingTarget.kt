@@ -3,6 +3,8 @@ package com.berryos.music.app
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.LibrarySnapshot
 import com.berryos.music.core.model.Track
+import com.berryos.music.core.model.album
+import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 
@@ -29,10 +31,7 @@ private fun resolveTarget(snapshot: LibrarySnapshot, track: Track, source: Playb
             albumTarget(snapshot, track, source.albumId) ?: albumTarget(snapshot, track, track.albumId)
 
         is PlaybackSource.Artist ->
-            snapshot.artists
-                .firstOrNull { it.source == track.source && it.id == source.artistId }
-                ?.let { NowPlayingTarget.Artist(it.id) }
-                ?: albumTarget(snapshot, track, track.albumId)
+            artistTarget(snapshot, track, source.artistId) ?: albumTarget(snapshot, track, track.albumId)
 
         is PlaybackSource.Playlist ->
             NowPlayingTarget.Playlist(source.playlistId)
@@ -41,6 +40,8 @@ private fun resolveTarget(snapshot: LibrarySnapshot, track: Track, source: Playb
             albumTarget(snapshot, track, track.albumId)
     }
 
-private fun albumTarget(snapshot: LibrarySnapshot, track: Track, albumId: String): NowPlayingTarget? = snapshot.albums
-    .firstOrNull { it.source == track.source && it.id == albumId }
-    ?.let { NowPlayingTarget.Album(it.id) }
+private fun albumTarget(snapshot: LibrarySnapshot, track: Track, albumId: String): NowPlayingTarget? =
+    snapshot.album(track.source, albumId)?.let { NowPlayingTarget.Album(it.id) }
+
+private fun artistTarget(snapshot: LibrarySnapshot, track: Track, artistId: String): NowPlayingTarget? =
+    snapshot.artist(track.source, artistId)?.let { NowPlayingTarget.Artist(it.id) }

@@ -80,6 +80,7 @@ import com.berryos.music.core.designsystem.rememberLoadedCoverColors
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
+import com.berryos.music.core.model.album
 import com.berryos.music.core.playback.PlaybackController
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
@@ -162,7 +163,7 @@ fun App(
         if (track == null || snapshot == null) {
             null
         } else {
-            snapshot.albums.firstOrNull { it.source == track.source && it.id == track.albumId }?.coverUrl
+            snapshot.album(track.source, track.albumId)?.coverUrl
         }
     }
     BerryTheme(accent = rememberLoadedCoverColors(nowPlayingCoverUrl)) {

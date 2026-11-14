@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.berryos.music.core.designsystem.CoverColors
+import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.ic_skip_next
 import com.berryos.music.resources.ic_skip_previous
@@ -44,7 +45,6 @@ internal val VOLUME_CENTER_DISTANCE = 48.dp
 internal val VOLUME_ICON_SIZE = 24.dp
 private val SLIDER_GAP = 16.dp
 private val SLIDER_HEIGHT = 48.dp
-private const val MEDIUM_ALPHA = 0.54f
 
 @Composable
 internal fun MediaPlaybackControls(
