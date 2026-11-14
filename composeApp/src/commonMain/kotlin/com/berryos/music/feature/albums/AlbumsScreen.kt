@@ -8,10 +8,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -23,10 +19,7 @@ import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.AlbumCover
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
-import com.berryos.music.core.designsystem.cacheCoverColors
-import com.berryos.music.core.designsystem.cachedCoverColors
-import com.berryos.music.core.designsystem.coverColorsOf
-import com.berryos.music.core.designsystem.rememberDefaultCoverColors
+import com.berryos.music.core.designsystem.rememberAlbumCoverColors
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.Album
 import com.berryos.music.resources.Res
@@ -74,27 +67,14 @@ fun AlbumsScreen(state: LibraryUiState, actions: AppActions) {
 
 @Composable
 private fun AlbumTile(album: Album, onClick: () -> Unit) {
-    val fallbackColors = rememberDefaultCoverColors()
-    var coverColors by remember(album.coverUrl) {
-        mutableStateOf(album.coverUrl?.let(::cachedCoverColors))
-    }
-    val colors = coverColors ?: fallbackColors
+    val coverColors = rememberAlbumCoverColors(album.coverUrl)
     RTile(
         media = {
-            AlbumCover(album.coverUrl) { image ->
-                val coverUrl = album.coverUrl
-                if (coverColors == null && image != null && coverUrl != null) {
-                    val computed = image.coverColorsOf()
-                    coverColors = computed
-                    if (computed != null) {
-                        cacheCoverColors(coverUrl, computed)
-                    }
-                }
-            }
+            AlbumCover(album.coverUrl, coverColors::onImage)
         },
-        backgroundColor = colors?.background ?: Color.Transparent,
-        contentColor = colors?.contentColor,
-        supportingContentColor = colors?.supportingColor,
+        backgroundColor = coverColors.colors?.background ?: Color.Transparent,
+        contentColor = coverColors.colors?.contentColor,
+        supportingContentColor = coverColors.colors?.supportingColor,
         onClick = onClick,
         mode = RTileMode.Outside,
         position = RTilePosition.Footer,

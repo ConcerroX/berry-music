@@ -32,7 +32,26 @@ private fun paletteColors(bitmap: Bitmap): CoverColors? {
         supportingColor = Color(swatch.bodyTextColor).copy(alpha = MEDIUM_ALPHA),
         accentColor = Color(accent.rgb),
         accentContentColor = Color(accent.titleTextColor).copy(alpha = 1f),
+        swatches = paletteSwatches(palette),
     )
+}
+
+private fun paletteSwatches(palette: Palette): List<CoverSwatch> = listOf(
+    "Vibrant" to palette.vibrantSwatch,
+    "Light vibrant" to palette.lightVibrantSwatch,
+    "Dark vibrant" to palette.darkVibrantSwatch,
+    "Muted" to palette.mutedSwatch,
+    "Light muted" to palette.lightMutedSwatch,
+    "Dark muted" to palette.darkMutedSwatch,
+    "Dominant" to palette.dominantSwatch,
+).mapNotNull { (name, swatch) ->
+    swatch?.let {
+        CoverSwatch(
+            name = name,
+            color = Color(it.rgb),
+            contentColor = Color(it.titleTextColor).copy(alpha = 1f),
+        )
+    }
 }
 
 private fun accentSwatch(palette: Palette, background: Palette.Swatch): Palette.Swatch =

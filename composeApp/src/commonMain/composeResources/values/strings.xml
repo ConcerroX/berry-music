@@ -50,6 +50,7 @@
     <string name="album_not_found">Album not found.</string>
     <string name="album_artist_year">%1$s · %2$d</string>
     <string name="album_title_artist">%1$s / %2$s</string>
+    <string name="cover_palette">Cover palette</string>
     <string name="track_count">%1$d tracks</string>
     <string name="album_summary">%1$s · %2$d tracks</string>
     <string name="artist_summary">%1$d albums · %2$d tracks</string>

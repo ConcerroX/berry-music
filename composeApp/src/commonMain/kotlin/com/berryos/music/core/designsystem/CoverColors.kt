@@ -10,7 +10,11 @@ data class CoverColors(
     val supportingColor: Color,
     val accentColor: Color,
     val accentContentColor: Color,
+    val swatches: List<CoverSwatch> = emptyList(),
 )
+
+/** One named Palette swatch extracted from the cover. */
+data class CoverSwatch(val name: String, val color: Color, val contentColor: Color)
 
 expect fun Image.coverColorsOf(): CoverColors?
 
