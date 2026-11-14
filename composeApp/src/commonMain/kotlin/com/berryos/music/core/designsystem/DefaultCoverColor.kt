@@ -6,12 +6,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+private val defaultColorsMutex = Mutex()
+private var defaultColors: CoverColors? = null
+private var defaultColorsLoaded = false
 
 @Composable
 fun rememberDefaultCoverColors(): CoverColors? {
-    var colors by remember { mutableStateOf<CoverColors?>(null) }
+    var colors by remember { mutableStateOf(if (defaultColorsLoaded) defaultColors else null) }
     LaunchedEffect(Unit) {
-        colors = defaultCoverColorsOf()
+        defaultColorsMutex.withLock {
+            if (!defaultColorsLoaded) {
+                defaultColors = defaultCoverColorsOf()
+                defaultColorsLoaded = true
+            }
+        }
+        colors = defaultColors
     }
     return colors
 }

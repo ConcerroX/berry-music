@@ -2,7 +2,6 @@ package com.berryos.music.core.designsystem
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.palette.graphics.Palette
 import coil3.Image
@@ -26,21 +25,26 @@ private fun paletteColors(bitmap: Bitmap): CoverColors? {
         .maximumColorCount(MAX_COLORS)
         .generate()
     val swatch = palette.vibrantSwatch ?: palette.dominantSwatch ?: palette.mutedSwatch ?: return null
-    Log.d(
-        "CoverColor",
-        "background=#${swatch.rgb.toUInt().toString(HEX_RADIX)} " +
-            "title=#${swatch.titleTextColor.toUInt().toString(HEX_RADIX)} " +
-            "body=#${swatch.bodyTextColor.toUInt().toString(HEX_RADIX)}",
-    )
+    val accent = accentSwatch(palette, swatch)
     return CoverColors(
         background = Color(swatch.rgb),
         contentColor = Color(swatch.titleTextColor).copy(alpha = 1f),
         supportingColor = Color(swatch.bodyTextColor).copy(alpha = MEDIUM_ALPHA),
+        accentColor = Color(accent.rgb),
+        accentContentColor = Color(accent.titleTextColor).copy(alpha = 1f),
     )
 }
+
+private fun accentSwatch(palette: Palette, background: Palette.Swatch): Palette.Swatch =
+    palette.vibrantSwatch?.takeIf { it.rgb != background.rgb }
+        ?: palette.lightVibrantSwatch?.takeIf { it.rgb != background.rgb }
+        ?: palette.darkVibrantSwatch?.takeIf { it.rgb != background.rgb }
+        ?: palette.mutedSwatch?.takeIf { it.rgb != background.rgb }
+        ?: palette.lightMutedSwatch?.takeIf { it.rgb != background.rgb }
+        ?: palette.darkMutedSwatch?.takeIf { it.rgb != background.rgb }
+        ?: background
 
 private const val PALETTE_SIZE = 64
 private const val MAX_COLORS = 16
 private const val MEDIUM_ALPHA = 0.54f
-private const val HEX_RADIX = 16
 private const val DEFAULT_COVER_PATH = "drawable/default_album_art.png"

@@ -21,9 +21,10 @@ import art.rippledesign.compose.rui.RTilePosition
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.AlbumCover
-import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
+import com.berryos.music.core.designsystem.cacheCoverColors
+import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.coverColorsOf
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -74,12 +75,21 @@ fun AlbumsScreen(state: LibraryUiState, actions: AppActions) {
 @Composable
 private fun AlbumTile(album: Album, onClick: () -> Unit) {
     val fallbackColors = rememberDefaultCoverColors()
-    var coverColors by remember(album.coverUrl) { mutableStateOf<CoverColors?>(null) }
+    var coverColors by remember(album.coverUrl) {
+        mutableStateOf(album.coverUrl?.let(::cachedCoverColors))
+    }
     val colors = coverColors ?: fallbackColors
     RTile(
         media = {
             AlbumCover(album.coverUrl) { image ->
-                coverColors = image?.coverColorsOf()
+                val coverUrl = album.coverUrl
+                if (coverColors == null && image != null && coverUrl != null) {
+                    val computed = image.coverColorsOf()
+                    coverColors = computed
+                    if (computed != null) {
+                        cacheCoverColors(coverUrl, computed)
+                    }
+                }
             }
         },
         backgroundColor = colors?.background ?: Color.Transparent,
