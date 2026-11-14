@@ -10,12 +10,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.berryos.music.app.App
+import com.berryos.music.core.auth.AndroidLogtoAuthController
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LocalLibrarySource
 import com.berryos.music.core.playback.MediaSessionPlaybackController
 
 class MainActivity : ComponentActivity() {
     private var playback: MediaSessionPlaybackController? = null
+    private var auth: AndroidLogtoAuthController? = null
 
     private val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -49,13 +51,22 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val repository = LibraryRepository(listOf(LocalLibrarySource(applicationContext)))
         val playbackController = MediaSessionPlaybackController(applicationContext)
+        val authController = AndroidLogtoAuthController(this)
         playback = playbackController
+        auth = authController
         setContent {
-            App(repository, playbackController)
+            App(repository, playbackController, authController)
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        auth?.refreshAccount()
+    }
+
     override fun onDestroy() {
+        auth?.release()
+        auth = null
         playback?.release()
         playback = null
         super.onDestroy()

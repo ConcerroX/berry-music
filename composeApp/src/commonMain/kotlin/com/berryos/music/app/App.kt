@@ -1,24 +1,16 @@
 package com.berryos.music.app
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Divider
 import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.ListItem
 import androidx.compose.material.LocalContentColor
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.NavigationRail
@@ -41,7 +33,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -72,6 +63,8 @@ import com.berryos.music.app.navigation.ServersRoute
 import com.berryos.music.app.navigation.SettingsRoute
 import com.berryos.music.app.navigation.SongsRoute
 import com.berryos.music.app.navigation.appRouteSerialization
+import com.berryos.music.core.auth.AuthController
+import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.designsystem.BerryTheme
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
@@ -97,6 +90,14 @@ import com.berryos.music.feature.settings.ServersScreen
 import com.berryos.music.feature.settings.SettingsScreen
 import com.berryos.music.feature.songs.SongsScreen
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.about
+import com.berryos.music.resources.add_server
+import com.berryos.music.resources.album
+import com.berryos.music.resources.app_name
+import com.berryos.music.resources.appearance
+import com.berryos.music.resources.artist
+import com.berryos.music.resources.back
+import com.berryos.music.resources.folder
 import com.berryos.music.resources.ic_arrow_back
 import com.berryos.music.resources.ic_filled_album
 import com.berryos.music.resources.ic_filled_home
@@ -109,21 +110,36 @@ import com.berryos.music.resources.ic_outlined_home
 import com.berryos.music.resources.ic_outlined_music_note
 import com.berryos.music.resources.ic_outlined_people
 import com.berryos.music.resources.ic_outlined_queue_music
-import com.berryos.music.resources.ic_search
-import com.berryos.music.resources.ic_settings
+import com.berryos.music.resources.library
+import com.berryos.music.resources.menu
+import com.berryos.music.resources.playback
+import com.berryos.music.resources.playlist
+import com.berryos.music.resources.refresh
+import com.berryos.music.resources.search
+import com.berryos.music.resources.server
+import com.berryos.music.resources.servers
+import com.berryos.music.resources.settings
+import com.berryos.music.resources.tab_albums
+import com.berryos.music.resources.tab_artists
+import com.berryos.music.resources.tab_home
+import com.berryos.music.resources.tab_playlists
+import com.berryos.music.resources.tab_songs
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun App(libraryRepository: LibraryRepository, playback: PlaybackController) {
+fun App(libraryRepository: LibraryRepository, playback: PlaybackController, auth: AuthController) {
     BerryTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             val libraryStore = remember(libraryRepository) { LibraryStore(libraryRepository) }
             val scope = rememberCoroutineScope()
             val refresh: () -> Unit = { scope.launch { libraryStore.refresh() } }
             val playbackState by playback.state.collectAsState()
+            val authState by auth.state.collectAsState()
             val sheetState = rememberModalBottomSheetState(
                 initialValue = ModalBottomSheetValue.Hidden,
                 skipHalfExpanded = true,
@@ -145,14 +161,14 @@ fun App(libraryRepository: LibraryRepository, playback: PlaybackController) {
                     }
                 },
             ) {
-                AppShell(libraryStore.state, refresh, playback, playbackState, openPlayer)
+                AppShell(libraryStore.state, refresh, playback, playbackState, authState, auth, openPlayer)
             }
         }
     }
 }
 
-private data class TabItem(
-    val label: String,
+internal data class TabItem(
+    val label: StringResource,
     val filledIcon: DrawableResource,
     val outlinedIcon: DrawableResource,
     val backStack: NavBackStack<NavKey>,
@@ -164,6 +180,8 @@ private fun AppShell(
     onRefresh: () -> Unit,
     playback: PlaybackController,
     playbackState: PlaybackState,
+    authState: AuthState,
+    auth: AuthController,
     onOpenPlayer: () -> Unit,
 ) {
     val homeBackStack = rememberNavBackStack(appRouteSerialization, HomeRoute)
@@ -187,7 +205,17 @@ private fun AppShell(
         togglePlayPause = playback::togglePlayPause,
         next = playback::next,
     )
-    AppChrome(tabs, selectedTabIndex, actions, libraryState, onRefresh, playbackState, onOpenPlayer) { index ->
+    AppChrome(
+        tabs,
+        selectedTabIndex,
+        actions,
+        libraryState,
+        onRefresh,
+        playbackState,
+        authState,
+        auth,
+        onOpenPlayer,
+    ) { index ->
         selectedTabIndex = index
     }
 }
@@ -199,11 +227,16 @@ private fun createTabs(
     playlists: NavBackStack<NavKey>,
     artists: NavBackStack<NavKey>,
 ): List<TabItem> = listOf(
-    TabItem("Home", Res.drawable.ic_filled_home, Res.drawable.ic_outlined_home, home),
-    TabItem("Albums", Res.drawable.ic_filled_album, Res.drawable.ic_outlined_album, albums),
-    TabItem("Songs", Res.drawable.ic_filled_music_note, Res.drawable.ic_outlined_music_note, songs),
-    TabItem("Playlists", Res.drawable.ic_filled_queue_music, Res.drawable.ic_outlined_queue_music, playlists),
-    TabItem("Artists", Res.drawable.ic_filled_people, Res.drawable.ic_outlined_people, artists),
+    TabItem(Res.string.tab_home, Res.drawable.ic_filled_home, Res.drawable.ic_outlined_home, home),
+    TabItem(Res.string.tab_albums, Res.drawable.ic_filled_album, Res.drawable.ic_outlined_album, albums),
+    TabItem(Res.string.tab_songs, Res.drawable.ic_filled_music_note, Res.drawable.ic_outlined_music_note, songs),
+    TabItem(
+        Res.string.tab_playlists,
+        Res.drawable.ic_filled_queue_music,
+        Res.drawable.ic_outlined_queue_music,
+        playlists,
+    ),
+    TabItem(Res.string.tab_artists, Res.drawable.ic_filled_people, Res.drawable.ic_outlined_people, artists),
 )
 
 @Suppress("LongMethod")
@@ -216,6 +249,8 @@ private fun AppChrome(
     libraryState: LibraryUiState,
     onRefresh: () -> Unit,
     playbackState: PlaybackState,
+    authState: AuthState,
+    auth: AuthController,
     onOpenPlayer: () -> Unit,
     onSelectTab: (Int) -> Unit,
 ) {
@@ -237,7 +272,7 @@ private fun AppChrome(
             scaffoldState = scaffoldState,
             drawerGesturesEnabled = drawerEnabled,
             drawerContent = {
-                AppDrawer(tabs, selectedTabIndex, actions, onSelectTab) {
+                AppDrawer(tabs, selectedTabIndex, actions, authState, auth, onSelectTab) {
                     drawerScope.launch { scaffoldState.drawerState.close() }
                 }
             },
@@ -256,7 +291,7 @@ private fun AppChrome(
                                     selected = index == selectedTabIndex,
                                     onClick = { onSelectTab(index) },
                                     icon = { TabIcon(tab, index == selectedTabIndex) },
-                                    label = { Text(tab.label) },
+                                    label = { Text(stringResource(tab.label)) },
                                 )
                             }
                         }
@@ -271,7 +306,7 @@ private fun AppChrome(
                                     selected = index == selectedTabIndex,
                                     onClick = { onSelectTab(index) },
                                     icon = { TabIcon(tab, index == selectedTabIndex) },
-                                    label = { Text(tab.label) },
+                                    label = { Text(stringResource(tab.label)) },
                                 )
                             }
                         }
@@ -289,80 +324,33 @@ private fun AppChrome(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun AppDrawer(
-    tabs: List<TabItem>,
-    selectedTabIndex: Int,
-    actions: AppActions,
-    onSelectTab: (Int) -> Unit,
-    onClose: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxHeight().width(280.dp).padding(vertical = 16.dp)) {
-        Text(
-            text = "Berry Music",
-            style = MaterialTheme.typography.h6,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        tabs.forEachIndexed { index, tab ->
-            DrawerItem(tab.label, tab.filledIcon, index == selectedTabIndex) {
-                onSelectTab(index)
-                onClose()
-            }
-        }
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-        DrawerItem("Search", Res.drawable.ic_search) {
-            actions.open(SearchRoute)
-            onClose()
-        }
-        DrawerItem("Settings", Res.drawable.ic_settings) {
-            actions.open(SettingsRoute)
-            onClose()
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-private fun DrawerItem(label: String, icon: DrawableResource, selected: Boolean = false, onClick: () -> Unit) {
-    ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
-        icon = { Icon(painter = painterResource(icon), contentDescription = null) },
-        text = {
-            Text(
-                text = label,
-                color = if (selected) MaterialTheme.colors.primary else Color.Unspecified,
-            )
-        },
-    )
-}
-
-private val staticRouteTitles: Map<NavKey, String> = mapOf(
-    HomeRoute to "Home",
-    AlbumsRoute to "Albums",
-    SongsRoute to "Songs",
-    PlaylistsRoute to "Playlists",
-    ArtistsRoute to "Artists",
-    SearchRoute to "Search",
-    SettingsRoute to "Settings",
-    AppearanceRoute to "Appearance",
-    PlaybackSettingsRoute to "Playback",
-    LibrarySettingsRoute to "Library",
-    ServersRoute to "Servers",
-    AboutRoute to "About",
+private val staticRouteTitles: Map<NavKey, StringResource> = mapOf(
+    HomeRoute to Res.string.tab_home,
+    AlbumsRoute to Res.string.tab_albums,
+    SongsRoute to Res.string.tab_songs,
+    PlaylistsRoute to Res.string.tab_playlists,
+    ArtistsRoute to Res.string.tab_artists,
+    SearchRoute to Res.string.search,
+    SettingsRoute to Res.string.settings,
+    AppearanceRoute to Res.string.appearance,
+    PlaybackSettingsRoute to Res.string.playback,
+    LibrarySettingsRoute to Res.string.library,
+    ServersRoute to Res.string.servers,
+    AboutRoute to Res.string.about,
 )
 
+@Composable
 private fun routeTitle(route: NavKey?): String {
-    if (route == null) return "Berry Music"
-    return when (route) {
-        is AlbumRoute -> "Album"
-        is ArtistRoute -> "Artist"
-        is PlaylistRoute -> "Playlist"
-        is FolderRoute -> "Folder"
-        is ServerEditRoute -> if (route.serverId == null) "Add server" else "Server"
-        else -> staticRouteTitles[route] ?: "Berry Music"
+    val resource = when (route) {
+        null -> null
+        is AlbumRoute -> Res.string.album
+        is ArtistRoute -> Res.string.artist
+        is PlaylistRoute -> Res.string.playlist
+        is FolderRoute -> Res.string.folder
+        is ServerEditRoute -> if (route.serverId == null) Res.string.add_server else Res.string.server
+        else -> staticRouteTitles[route]
     }
+    return stringResource(resource ?: Res.string.app_name)
 }
 
 @Composable
@@ -375,7 +363,7 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
                 IconButton(onClick = back) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = "Back",
+                        contentDescription = stringResource(Res.string.back),
                     )
                 }
             }
@@ -386,7 +374,7 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
                 IconButton(onClick = menu) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_menu),
-                        contentDescription = "Menu",
+                        contentDescription = stringResource(Res.string.menu),
                     )
                 }
             }
@@ -403,7 +391,7 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
                     onClick = refresh,
                     colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current),
                 ) {
-                    Text("Refresh")
+                    Text(stringResource(Res.string.refresh))
                 }
             }
         },
@@ -414,7 +402,7 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
 private fun TabIcon(tab: TabItem, selected: Boolean) {
     Icon(
         painter = painterResource(if (selected) tab.filledIcon else tab.outlinedIcon),
-        contentDescription = tab.label,
+        contentDescription = stringResource(tab.label),
     )
 }
 
