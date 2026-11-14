@@ -75,10 +75,16 @@ internal fun AppDrawer(
     onClose: () -> Unit,
 ) {
     var showAccountDialog by rememberSaveable { mutableStateOf(false) }
+    val localMode = authState.showingLocal
     Column(modifier = Modifier.fillMaxSize()) {
         DrawerHeader(
-            subtitle = accountSubtitle(authState),
-            avatarUrl = authState.activeAccount?.avatarUrl,
+            title = if (localMode) {
+                stringResource(Res.string.local_music)
+            } else {
+                stringResource(Res.string.account_service_name)
+            },
+            subtitle = if (localMode) null else accountSubtitle(authState),
+            avatarUrl = if (localMode) null else authState.activeAccount?.avatarUrl,
             onClick = { showAccountDialog = true },
         )
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -107,6 +113,7 @@ internal fun AppDrawer(
                 onClose()
             },
             onSelectAccount = auth::selectAccount,
+            onSelectLocal = auth::selectLocal,
             onDismissRequest = { showAccountDialog = false },
         )
     }
@@ -124,7 +131,7 @@ private fun accountSubtitle(authState: AuthState): String? {
 }
 
 @Composable
-private fun DrawerHeader(subtitle: String?, avatarUrl: String?, onClick: () -> Unit) {
+private fun DrawerHeader(title: String, subtitle: String?, avatarUrl: String?, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +151,7 @@ private fun DrawerHeader(subtitle: String?, avatarUrl: String?, onClick: () -> U
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = stringResource(Res.string.account_service_name),
+                        text = title,
                         style = MaterialTheme.typography.subtitle2,
                         color = DrawerTitleColor,
                     )
@@ -202,6 +209,7 @@ private fun AccountDialog(
     authState: AuthState,
     onSignIn: () -> Unit,
     onSelectAccount: (String) -> Unit,
+    onSelectLocal: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
     RAlertDialog(
@@ -210,9 +218,12 @@ private fun AccountDialog(
         text = {
             Column {
                 AccountItem(
-                    stringResource(Res.string.local_music),
-                    Res.drawable.ic_local_music,
-                    onClick = onDismissRequest,
+                    label = stringResource(Res.string.local_music),
+                    icon = Res.drawable.ic_local_music,
+                    onClick = {
+                        onSelectLocal()
+                        onDismissRequest()
+                    },
                 )
                 authState.accounts.forEach { account ->
                     AccountItem(
@@ -220,7 +231,6 @@ private fun AccountDialog(
                         icon = Res.drawable.ic_person,
                         avatarUrl = account.avatarUrl,
                         secondaryLabel = account.displayName,
-                        enabled = account.id != authState.activeAccountId,
                         onClick = {
                             onSelectAccount(account.id)
                             onDismissRequest()

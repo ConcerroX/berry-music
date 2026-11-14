@@ -27,6 +27,7 @@ import kotlinx.serialization.json.Json
 import java.io.IOException
 import kotlin.coroutines.resume
 
+@Suppress("TooManyFunctions")
 class AndroidLogtoAuthController(private val activity: Activity) : AuthController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val httpClient = HttpClient(OkHttp) {
@@ -113,9 +114,15 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
 
     override fun selectAccount(accountId: String) {
         val current = _state.value
-        if (current.activeAccountId == accountId) return
         if (current.accounts.none { it.id == accountId }) return
-        update(current.copy(activeAccountId = accountId))
+        if (current.activeAccountId == accountId && !current.localMode) return
+        update(current.copy(activeAccountId = accountId, localMode = false))
+    }
+
+    override fun selectLocal() {
+        val current = _state.value
+        if (current.localMode) return
+        update(current.copy(localMode = true))
     }
 
     fun release() {
@@ -133,7 +140,7 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
         } else {
             current.activeAccountId
         }
-        update(current.copy(accounts = remaining, activeAccountId = activeId))
+        update(current.copy(accounts = remaining, activeAccountId = activeId, localMode = remaining.isEmpty()))
         if (remaining.isEmpty()) {
             logtoClient.clearCredentials()
         }
@@ -176,7 +183,15 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
         }
         if (makeActive) BerrySystemAccounts.add(appContext, account)
         val activeId = if (makeActive) account.id else current.activeAccountId
-        update(current.copy(accounts = accounts, activeAccountId = activeId, signingIn = false, error = null))
+        update(
+            current.copy(
+                accounts = accounts,
+                activeAccountId = activeId,
+                localMode = if (makeActive) false else current.localMode,
+                signingIn = false,
+                error = null,
+            ),
+        )
     }
 
     private fun restoreState(): AuthState {
@@ -209,12 +224,18 @@ private class AccountStore(application: Application) {
     fun load(): AuthState {
         val stored = preferences.getString(KEY_STATE, null) ?: return AuthState()
         return runCatching { json.decodeFromString<StoredAuthState>(stored) }
-            .map { AuthState(accounts = it.accounts, activeAccountId = it.activeAccountId) }
+            .map {
+                AuthState(
+                    accounts = it.accounts,
+                    activeAccountId = it.activeAccountId,
+                    localMode = it.localMode,
+                )
+            }
             .getOrDefault(AuthState())
     }
 
     fun save(state: AuthState) {
-        val stored = StoredAuthState(state.accounts, state.activeAccountId)
+        val stored = StoredAuthState(state.accounts, state.activeAccountId, state.localMode)
         preferences.edit().putString(KEY_STATE, json.encodeToString(stored)).apply()
     }
 
@@ -222,6 +243,7 @@ private class AccountStore(application: Application) {
     private data class StoredAuthState(
         val accounts: List<ServerAccount> = emptyList(),
         val activeAccountId: String? = null,
+        val localMode: Boolean = false,
     )
 
     private companion object {

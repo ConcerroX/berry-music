@@ -30,9 +30,13 @@ data class ServerAccount(
 data class AuthState(
     val accounts: List<ServerAccount> = emptyList(),
     val activeAccountId: String? = null,
+    val localMode: Boolean = false,
     val signingIn: Boolean = false,
     val error: String? = null,
 ) {
     val activeAccount: ServerAccount?
         get() = accounts.firstOrNull { it.id == activeAccountId }
+
+    val showingLocal: Boolean
+        get() = localMode || activeAccount == null
 }

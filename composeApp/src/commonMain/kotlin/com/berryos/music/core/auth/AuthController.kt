@@ -10,4 +10,6 @@ interface AuthController {
     fun signOut()
 
     fun selectAccount(accountId: String)
+
+    fun selectLocal()
 }

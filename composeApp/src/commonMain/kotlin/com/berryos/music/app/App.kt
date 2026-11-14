@@ -68,6 +68,7 @@ import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.designsystem.BerryTheme
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.core.library.filtered
 import com.berryos.music.core.playback.PlaybackController
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
@@ -161,7 +162,15 @@ fun App(libraryRepository: LibraryRepository, playback: PlaybackController, auth
                     }
                 },
             ) {
-                AppShell(libraryStore.state, refresh, playback, playbackState, authState, auth, openPlayer)
+                AppShell(
+                    libraryStore.state.filtered(authState.showingLocal),
+                    refresh,
+                    playback,
+                    playbackState,
+                    authState,
+                    auth,
+                    openPlayer,
+                )
             }
         }
     }
