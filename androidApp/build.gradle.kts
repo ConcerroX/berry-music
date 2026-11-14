@@ -33,6 +33,7 @@ android {
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.koin.android)
     detektPlugins(libs.detekt.rules.ktlint.wrapper)
 }
 

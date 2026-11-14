@@ -11,16 +11,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.berryos.music.app.App
 import com.berryos.music.core.auth.AndroidLogtoAuthController
-import com.berryos.music.core.datastore.DataStoreAppSettingsRepository
+import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.library.LibraryRepository
-import com.berryos.music.core.library.LocalLibrarySource
-import com.berryos.music.core.library.SubsonicLibrarySource
 import com.berryos.music.core.library.mediaStoreChanges
-import com.berryos.music.core.playback.MediaSessionPlaybackController
+import com.berryos.music.core.playback.PlaybackController
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 
-class MainActivity : ComponentActivity() {
-    private var playback: MediaSessionPlaybackController? = null
-    private var auth: AndroidLogtoAuthController? = null
+class MainActivity : ComponentActivity(), KoinComponent {
+    private val auth: AndroidLogtoAuthController
+        get() = get()
 
     private val audioPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         Manifest.permission.READ_MEDIA_AUDIO
@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        auth.attach(this)
         val granted =
             ContextCompat.checkSelfPermission(this, audioPermission) ==
                 PackageManager.PERMISSION_GRANTED
@@ -52,32 +53,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showApp() {
-        val authController = AndroidLogtoAuthController(this)
-        val repository = LibraryRepository(
-            listOf(
-                LocalLibrarySource(applicationContext),
-                SubsonicLibrarySource(account = { authController.state.value.activeAccount }),
-            ),
-        )
-        val playbackController = MediaSessionPlaybackController(applicationContext)
-        val settings = DataStoreAppSettingsRepository.get(applicationContext)
-        playback = playbackController
-        auth = authController
+        val repository = get<LibraryRepository>()
+        val playbackController = get<PlaybackController>()
+        val settings = get<AppSettingsRepository>()
         setContent {
-            App(repository, playbackController, authController, mediaStoreChanges(applicationContext), settings)
+            App(repository, playbackController, auth, mediaStoreChanges(applicationContext), settings)
         }
     }
 
     override fun onResume() {
         super.onResume()
-        auth?.refreshAccount()
+        auth.attach(this)
+        auth.refreshAccount()
     }
 
     override fun onDestroy() {
-        auth?.release()
-        auth = null
-        playback?.release()
-        playback = null
+        auth.attach(null)
         super.onDestroy()
     }
 }

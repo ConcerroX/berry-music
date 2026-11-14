@@ -12,12 +12,16 @@ import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.auth.BERRY_ACCOUNT_TYPE
 import com.berryos.music.core.auth.ServerAccount
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 
-class BerryAddAccountActivity : ComponentActivity() {
-    private var controller: AndroidLogtoAuthController? = null
+class BerryAddAccountActivity : ComponentActivity(), KoinComponent {
     private var response: AccountAuthenticatorResponse? = null
     private var started = false
     private var responded = false
+
+    private val controller: AndroidLogtoAuthController
+        get() = get()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,18 +30,16 @@ class BerryAddAccountActivity : ComponentActivity() {
             AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE,
             AccountAuthenticatorResponse::class.java,
         )
-        val auth = AndroidLogtoAuthController(this)
-        controller = auth
-        lifecycleScope.launch { auth.state.collect(::onAuthState) }
-        auth.signIn(forceLogin = true)
+        controller.attach(this)
+        lifecycleScope.launch { controller.state.collect(::onAuthState) }
+        controller.signIn(forceLogin = true)
     }
 
     override fun onDestroy() {
         if (!responded && response != null) {
             response?.onError(AccountManager.ERROR_CODE_CANCELED, getString(R.string.account_canceled))
         }
-        controller?.release()
-        controller = null
+        controller.attach(null)
         super.onDestroy()
     }
 

@@ -15,7 +15,6 @@ import io.logto.sdk.android.type.SignInOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +26,7 @@ import java.io.IOException
 import kotlin.coroutines.resume
 
 @Suppress("TooManyFunctions")
-class AndroidLogtoAuthController(private val activity: Activity) : AuthController {
+class AndroidLogtoAuthController(private val application: Application) : AuthController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val httpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) {
@@ -35,7 +34,7 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
         }
     }
     private val serverAuth = ServerAuthApi(httpClient, AuthConfig.SERVER_BASE_URL)
-    private val appContext = activity.application
+    private val appContext = application
     private val accountStore = AccountStore(appContext)
     private val logtoClient = LogtoClient(
         LogtoConfig(
@@ -45,16 +44,22 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
             resources = listOf(AuthConfig.LOGTO_API_RESOURCE),
             usingPersistStorage = true,
         ),
-        activity.application as Application,
+        application,
     )
 
     private val _state = MutableStateFlow(restoreState())
     override val state: StateFlow<AuthState> = _state.asStateFlow()
 
     private var refreshing = false
+    private var activity: Activity? = null
 
     init {
         refreshAccount()
+    }
+
+    /** Logto opens Custom Tabs, so sign-in needs the current Activity. */
+    fun attach(activity: Activity?) {
+        this.activity = activity
     }
 
     fun refreshAccount() {
@@ -87,10 +92,15 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
 
     override fun signIn(forceLogin: Boolean) {
         if (_state.value.signingIn) return
+        val currentActivity = activity ?: return
         if (AuthConfig.LOGTO_APP_ID.isBlank()) {
             update(_state.value.copy(error = "Logto Native app ID is not configured"))
-            return
+        } else {
+            startSignIn(currentActivity, forceLogin)
         }
+    }
+
+    private fun startSignIn(activity: Activity, forceLogin: Boolean) {
         update(_state.value.copy(signingIn = true, error = null))
         val options = SignInOptions(
             redirectUri = AuthConfig.LOGTO_REDIRECT_URI,
@@ -122,11 +132,6 @@ class AndroidLogtoAuthController(private val activity: Activity) : AuthControlle
         val current = _state.value
         if (current.localMode) return
         update(current.copy(localMode = true))
-    }
-
-    fun release() {
-        scope.cancel()
-        httpClient.close()
     }
 
     private fun removeAccount(accountId: String) {

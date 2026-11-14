@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 
-class DataStoreAppSettingsRepository private constructor(context: Context) : AppSettingsRepository {
+class DataStoreAppSettingsRepository(context: Context) : AppSettingsRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.createWithPath(scope = scope) {
         context.applicationContext.filesDir.resolve(SETTINGS_FILE).toOkioPath()
@@ -40,14 +40,6 @@ class DataStoreAppSettingsRepository private constructor(context: Context) : App
     }
 
     companion object {
-        // One DataStore per file: Activity re-creation must reuse this instance.
-        @Volatile
-        private var instance: DataStoreAppSettingsRepository? = null
-
-        fun get(context: Context): DataStoreAppSettingsRepository = instance ?: synchronized(this) {
-            instance ?: DataStoreAppSettingsRepository(context).also { instance = it }
-        }
-
         private val CollapsePlayerOnPauseKey = booleanPreferencesKey("collapse_player_on_pause")
         private const val SETTINGS_FILE = "datastore/settings.preferences_pb"
     }
