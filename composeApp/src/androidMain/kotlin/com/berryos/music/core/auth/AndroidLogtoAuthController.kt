@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.util.Log
+import androidx.core.content.edit
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -21,8 +22,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import kotlin.coroutines.resume
@@ -236,7 +235,7 @@ private class AccountStore(application: Application) {
 
     fun save(state: AuthState) {
         val stored = StoredAuthState(state.accounts, state.activeAccountId, state.localMode)
-        preferences.edit().putString(KEY_STATE, json.encodeToString(stored)).apply()
+        preferences.edit { putString(KEY_STATE, json.encodeToString(stored)) }
     }
 
     @Serializable
