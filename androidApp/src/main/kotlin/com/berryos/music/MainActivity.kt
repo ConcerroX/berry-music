@@ -12,8 +12,6 @@ import androidx.core.content.ContextCompat
 import com.berryos.music.app.App
 import com.berryos.music.core.auth.AndroidLogtoAuthController
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.library.LibraryRepository
-import com.berryos.music.core.library.mediaStoreChanges
 import com.berryos.music.core.playback.PlaybackController
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
@@ -53,11 +51,10 @@ class MainActivity : ComponentActivity(), KoinComponent {
     }
 
     private fun showApp() {
-        val repository = get<LibraryRepository>()
         val playbackController = get<PlaybackController>()
         val settings = get<AppSettingsRepository>()
         setContent {
-            App(repository, playbackController, auth, mediaStoreChanges(applicationContext), settings)
+            App(playbackController, auth, settings)
         }
     }
 

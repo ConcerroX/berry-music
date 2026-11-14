@@ -1,7 +1,9 @@
 package com.berryos.music.core.library
 
+import com.berryos.music.app.LibraryViewModel
 import com.berryos.music.core.auth.AuthController
 import org.koin.android.ext.koin.androidContext
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val libraryModule = module {
@@ -13,4 +15,5 @@ val libraryModule = module {
             ),
         )
     }
+    viewModel { LibraryViewModel(get(), mediaStoreChanges(androidContext())) }
 }

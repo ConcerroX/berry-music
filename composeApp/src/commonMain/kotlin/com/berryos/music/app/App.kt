@@ -26,7 +26,6 @@ import androidx.compose.material.rememberDrawerState
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -77,7 +76,6 @@ import com.berryos.music.core.designsystem.CoverPaletteDialog
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.designsystem.rememberLoadedCoverColors
-import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
 import com.berryos.music.core.model.album
@@ -138,28 +136,23 @@ import com.berryos.music.resources.tab_artists
 import com.berryos.music.resources.tab_home
 import com.berryos.music.resources.tab_playlists
 import com.berryos.music.resources.tab_songs
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun App(
-    libraryRepository: LibraryRepository,
-    playback: PlaybackController,
-    auth: AuthController,
-    libraryChanges: Flow<Unit>,
-    settings: AppSettingsRepository,
-) {
-    val libraryStore = remember(libraryRepository) { LibraryStore(libraryRepository) }
+fun App(playback: PlaybackController, auth: AuthController, settings: AppSettingsRepository) {
+    val libraryViewModel: LibraryViewModel = koinViewModel()
+    val libraryState by libraryViewModel.state.collectAsState()
     val playbackState by playback.state.collectAsState()
     val authState by auth.state.collectAsState()
-    val libraryState = libraryStore.state.filtered(authState.showingLocal)
-    val nowPlayingCoverUrl = remember(libraryState, playbackState.currentTrack) {
+    val visibleLibrary = libraryState.filtered(authState.showingLocal)
+    val nowPlayingCoverUrl = remember(visibleLibrary, playbackState.currentTrack) {
         val track = playbackState.currentTrack
-        val snapshot = (libraryState as? LibraryUiState.Ready)?.snapshot
+        val snapshot = (visibleLibrary as? LibraryUiState.Ready)?.snapshot
         if (track == null || snapshot == null) {
             null
         } else {
@@ -168,12 +161,8 @@ fun App(
     }
     BerryTheme(accent = rememberLoadedCoverColors(nowPlayingCoverUrl)) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            LaunchedEffect(libraryStore, libraryChanges) {
-                libraryStore.refresh()
-                launch { libraryChanges.collect { libraryStore.refresh() } }
-            }
             AppShell(
-                libraryState,
+                visibleLibrary,
                 playback,
                 playbackState,
                 authState,
