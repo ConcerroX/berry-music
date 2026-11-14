@@ -3,19 +3,45 @@ package com.berryos.music.core.playback
 import com.berryos.music.core.model.Track
 import kotlinx.coroutines.flow.StateFlow
 
+/** Where the current queue came from; the id is kept for titles, restore, and deep links. */
+sealed interface PlaybackSource {
+    data object Queue : PlaybackSource
+    data object Songs : PlaybackSource
+    data object Search : PlaybackSource
+    data class Album(val albumId: String) : PlaybackSource
+    data class Playlist(val playlistId: String) : PlaybackSource
+    data class Artist(val artistId: String) : PlaybackSource
+}
+
 data class PlaybackState(
     val queue: List<Track> = emptyList(),
     val currentIndex: Int = -1,
     val isPlaying: Boolean = false,
+    val source: PlaybackSource = PlaybackSource.Queue,
 ) {
     val currentTrack: Track?
         get() = queue.getOrNull(currentIndex)
 }
 
+/** How a page's playback object relates to the current playback session. */
+enum class PlaybackStatus {
+    Playing,
+    Paused,
+
+    /** The session belongs to another object; the current track's membership does not matter. */
+    NotPlaying,
+}
+
+fun PlaybackState.playbackStatus(source: PlaybackSource): PlaybackStatus = when {
+    this.source != source -> PlaybackStatus.NotPlaying
+    isPlaying -> PlaybackStatus.Playing
+    else -> PlaybackStatus.Paused
+}
+
 interface PlaybackController {
     val state: StateFlow<PlaybackState>
 
-    fun play(tracks: List<Track>, startIndex: Int)
+    fun play(tracks: List<Track>, startIndex: Int, source: PlaybackSource = PlaybackSource.Queue)
     fun togglePlayPause()
     fun next()
     fun previous()

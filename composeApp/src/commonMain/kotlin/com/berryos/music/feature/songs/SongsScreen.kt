@@ -14,6 +14,7 @@ import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.could_not_load_music
 import com.berryos.music.resources.no_music_found
@@ -43,7 +44,7 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     itemsIndexed(tracks) { index, track ->
                         ListItem(
-                            modifier = Modifier.clickable { actions.play(tracks, index) },
+                            modifier = Modifier.clickable { actions.play(tracks, index, PlaybackSource.Songs) },
                             text = { Text(track.title) },
                             secondaryText = {
                                 Text(stringResource(Res.string.track_summary, track.artist, track.album))

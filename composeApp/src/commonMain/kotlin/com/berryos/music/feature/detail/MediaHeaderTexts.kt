@@ -1,4 +1,4 @@
-package com.berryos.music.feature.album
+package com.berryos.music.feature.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,18 +19,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.berryos.music.core.designsystem.CoverColors
-import com.berryos.music.core.model.Album
 import com.berryos.music.resources.Res
-import com.berryos.music.resources.album_title_artist
+import com.berryos.music.resources.title_subtitle
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 internal val TOP_STRIP_HEIGHT = 16.dp
 private val BOTTOM_TEXT_HEIGHT = 64.dp
 
-/** White strip that grows upward from the header; it will become the playback progress bar. */
+/** Strip that grows upward from the header; it will become the playback progress bar. */
 @Composable
-internal fun BoxScope.AlbumTopStrip(progress: Float) {
+internal fun BoxScope.MediaTopStrip(progress: Float, color: Color) {
     val height = with(LocalDensity.current) { TOP_STRIP_HEIGHT * progress }
     val heightPx = with(LocalDensity.current) { height.toPx() }
     Box(
@@ -39,12 +38,12 @@ internal fun BoxScope.AlbumTopStrip(progress: Float) {
             .offset { IntOffset(0, -heightPx.roundToInt()) }
             .fillMaxWidth()
             .height(height)
-            .background(Color.White),
+            .background(color),
     )
 }
 
 @Composable
-internal fun BoxScope.AlbumBottomText(album: Album, colors: CoverColors?, alpha: Float) {
+internal fun BoxScope.MediaBottomText(title: String, subtitle: String, colors: CoverColors?, alpha: Float) {
     val layerAlpha = alpha
     Box(
         modifier = Modifier
@@ -55,7 +54,7 @@ internal fun BoxScope.AlbumBottomText(album: Album, colors: CoverColors?, alpha:
         contentAlignment = Alignment.CenterStart,
     ) {
         Text(
-            text = stringResource(Res.string.album_title_artist, album.title, album.artist),
+            text = stringResource(Res.string.title_subtitle, title, subtitle),
             style = MaterialTheme.typography.body1,
             color = colors?.contentColor ?: Color.Unspecified,
             maxLines = 1,

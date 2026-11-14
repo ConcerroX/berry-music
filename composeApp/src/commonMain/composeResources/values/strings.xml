@@ -24,16 +24,12 @@
 
     <string name="back">Back</string>
     <string name="menu">Menu</string>
-    <string name="close">Close</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
     <string name="mute">Mute</string>
     <string name="volume_up">Volume up</string>
-    <string name="now_playing">Now playing</string>
-    <string name="queue">Queue</string>
-    <string name="playing">Playing</string>
 
     <string name="profile">Profile</string>
     <string name="expand">Expand</string>
@@ -48,8 +44,9 @@
     <string name="loading_library">Loading library...</string>
     <string name="loading_local_library">Loading local library...</string>
     <string name="album_not_found">Album not found.</string>
+    <string name="artist_not_found">Artist not found.</string>
     <string name="album_artist_year">%1$s · %2$d</string>
-    <string name="album_title_artist">%1$s / %2$s</string>
+    <string name="title_subtitle">%1$s / %2$s</string>
     <string name="cover_palette">Cover palette</string>
     <string name="track_count">%1$d tracks</string>
     <string name="album_summary">%1$s · %2$d tracks</string>
@@ -69,7 +66,6 @@
     <string name="unknown_artist">Unknown artist</string>
     <string name="unknown_album">Unknown album</string>
 
-    <string name="artist_id">Artist id: %1$s</string>
     <string name="folder_id">Folder id: %1$s</string>
     <string name="playlist_id">Playlist id: %1$s</string>
     <string name="server_id">Server id: %1$s</string>

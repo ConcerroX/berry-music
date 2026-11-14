@@ -30,7 +30,8 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
 
     private var controller: MediaController? = null
     private var tracks: List<Track> = emptyList()
-    private var pendingPlay: Pair<List<Track>, Int>? = null
+    private var source: PlaybackSource = PlaybackSource.Queue
+    private var pendingPlay: PendingPlay? = null
     private val _state = MutableStateFlow(PlaybackState())
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
@@ -50,7 +51,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
                 val mediaController = controllerFuture.get()
                 controller = mediaController
                 mediaController.addListener(listener)
-                pendingPlay?.let { (queuedTracks, index) -> play(queuedTracks, index) }
+                pendingPlay?.let { play(it.tracks, it.startIndex, it.source) }
                 pendingPlay = null
                 updateState()
             },
@@ -58,15 +59,16 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         )
     }
 
-    override fun play(tracks: List<Track>, startIndex: Int) {
+    override fun play(tracks: List<Track>, startIndex: Int, source: PlaybackSource) {
         val mediaController = controller
         if (mediaController == null) {
-            pendingPlay = tracks to startIndex
+            pendingPlay = PendingPlay(tracks, startIndex, source)
             return
         }
         val playable = tracks.filter { it.source == SourceKey.Local || it.streamUrl != null }
         if (playable.isEmpty()) return
         this.tracks = playable
+        this.source = source
         val items = playable.map { track ->
             MediaItem.Builder()
                 .setMediaId("${track.source}:${track.id}")
@@ -118,6 +120,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
             queue = tracks,
             currentIndex = mediaController.currentMediaItemIndex,
             isPlaying = mediaController.isPlaying,
+            source = source,
         )
     }
 
@@ -136,4 +139,6 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
     companion object {
         private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
     }
+
+    private data class PendingPlay(val tracks: List<Track>, val startIndex: Int, val source: PlaybackSource)
 }

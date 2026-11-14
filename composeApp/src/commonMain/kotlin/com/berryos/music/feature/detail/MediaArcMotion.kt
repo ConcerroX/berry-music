@@ -1,4 +1,4 @@
-package com.berryos.music.feature.album
+package com.berryos.music.feature.detail
 
 import androidx.compose.ui.geometry.Offset
 

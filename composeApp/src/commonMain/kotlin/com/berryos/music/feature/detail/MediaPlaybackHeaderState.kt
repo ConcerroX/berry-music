@@ -1,4 +1,4 @@
-package com.berryos.music.feature.album
+package com.berryos.music.feature.detail
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
@@ -6,11 +6,8 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +18,7 @@ import kotlinx.coroutines.launch
 private val ReverseStandardEasing = Easing { fraction -> 1f - FastOutSlowInEasing.transform(1f - fraction) }
 
 /**
- * Orchestrates the album playback header transition.
+ * Orchestrates the media detail playback header transition.
  *
  * Forward (0-400ms): the FAB arcs to the header, the reveal grows from the live FAB position,
  * the title fades out, the band grows, then the controls and bottom text fade in.
@@ -30,36 +27,34 @@ private val ReverseStandardEasing = Easing { fraction -> 1f - FastOutSlowInEasin
  * easing backwards so that, at 250ms, it is back at the position where the forward reveal started;
  * the shrinking reveal therefore lands exactly on its own starting point without recording it.
  */
-internal class AlbumPlaybackHeaderState(private val scope: CoroutineScope) {
+internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initiallyExpanded: Boolean) {
     var bandSize by mutableStateOf(IntSize.Zero)
-    var expanding by mutableStateOf(false)
+    var expanded by mutableStateOf(initiallyExpanded)
         private set
 
-    // Kept separate from fabDone so the FAB shadow returns only after the reverse reveal finishes.
-    var containerVisible by mutableStateOf(true)
+    // Kept separate from fabArrived so the FAB shadow returns only after the reverse reveal finishes.
+    var containerVisible by mutableStateOf(!initiallyExpanded)
         private set
-    var iconPlaying by mutableStateOf(false)
+    var fabArrived by mutableStateOf(initiallyExpanded)
         private set
-    var fabDone by mutableStateOf(false)
-        private set
-    var revealed by mutableStateOf(false)
+    var revealed by mutableStateOf(initiallyExpanded)
         private set
     var collapsing by mutableStateOf(false)
         private set
-    val fabMoveProgress = Animatable(0f)
-    val controlsProgress = Animatable(0f)
-    val volumeProgress = Animatable(0f)
-    val topStripProgress = Animatable(0f)
-    val bandExpandProgress = Animatable(0f)
-    val titleFadeProgress = Animatable(0f)
-    val bottomTextProgress = Animatable(0f)
+    val fabMoveProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val controlsProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val volumeProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val topStripProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val bandExpandProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val titleFadeProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val bottomTextProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val revealShadowProgress = Animatable(if (initiallyExpanded) 1f else 0f)
 
     fun start(onPlay: () -> Unit) {
-        if (expanding) {
+        if (expanded) {
             return
         }
-        expanding = true
-        iconPlaying = true
+        expanded = true
         containerVisible = true
         onPlay()
         scope.launch {
@@ -70,27 +65,27 @@ internal class AlbumPlaybackHeaderState(private val scope: CoroutineScope) {
             launch { animateBandExpand() }
             launch { animateTitleFade() }
             launch { animateBottomText() }
+            launch { animateRevealShadow() }
         }
     }
 
-    fun collapse(onTogglePlayPause: () -> Unit) {
-        if (!expanding || collapsing) {
+    fun collapse() {
+        if (!expanded || collapsing) {
             return
         }
         collapsing = true
         revealed = false
         containerVisible = false
-        onTogglePlayPause()
         scope.launch {
             launch { controlsProgress.animateTo(0f, tween(REVEAL_MILLIS, easing = FastOutLinearInEasing)) }
             launch { volumeProgress.animateTo(0f, tween(VOLUME_FADE_MILLIS, easing = FastOutLinearInEasing)) }
             launch { topStripProgress.animateTo(0f, tween(TOP_STRIP_MILLIS, easing = FastOutLinearInEasing)) }
             launch { bandExpandProgress.animateTo(0f, tween(BAND_EXPAND_MILLIS, easing = FastOutSlowInEasing)) }
             launch { bottomTextProgress.animateTo(0f, tween(BOTTOM_TEXT_MILLIS, easing = FastOutLinearInEasing)) }
+            launch { revealShadowProgress.animateTo(0f, tween(SHADOW_FADE_MILLIS, easing = FastOutLinearInEasing)) }
             launch {
                 delay(REVEAL_START_MILLIS.toLong())
-                iconPlaying = false
-                fabDone = false
+                fabArrived = false
                 fabMoveProgress.animateTo(
                     targetValue = 0f,
                     animationSpec = tween(FAB_MOVE_MILLIS, easing = ReverseStandardEasing),
@@ -106,7 +101,7 @@ internal class AlbumPlaybackHeaderState(private val scope: CoroutineScope) {
                 titleFadeProgress.animateTo(0f, tween(TITLE_FADE_MILLIS, easing = LinearOutSlowInEasing))
             }
             delay(BAND_EXPAND_MILLIS.toLong())
-            expanding = false
+            expanded = false
             collapsing = false
         }
     }
@@ -116,7 +111,7 @@ internal class AlbumPlaybackHeaderState(private val scope: CoroutineScope) {
             targetValue = 1f,
             animationSpec = tween(FAB_MOVE_MILLIS, easing = FastOutSlowInEasing),
         )
-        fabDone = true
+        fabArrived = true
         containerVisible = false
     }
 
@@ -166,12 +161,14 @@ internal class AlbumPlaybackHeaderState(private val scope: CoroutineScope) {
             animationSpec = tween(BOTTOM_TEXT_MILLIS, easing = LinearOutSlowInEasing),
         )
     }
-}
 
-@Composable
-internal fun rememberAlbumPlaybackHeaderState(): AlbumPlaybackHeaderState {
-    val scope = rememberCoroutineScope()
-    return remember(scope) { AlbumPlaybackHeaderState(scope) }
+    private suspend fun animateRevealShadow() {
+        delay(SHADOW_START_MILLIS.toLong())
+        revealShadowProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(SHADOW_FADE_MILLIS, easing = LinearOutSlowInEasing),
+        )
+    }
 }
 
 // Forward windows in milliseconds. Reverse windows are their mirror in 0..400.
@@ -187,3 +184,5 @@ internal const val BAND_EXPAND_MILLIS = 400
 internal const val TITLE_FADE_MILLIS = 175
 internal const val BOTTOM_TEXT_START_MILLIS = 175
 internal const val BOTTOM_TEXT_MILLIS = 225
+internal const val SHADOW_START_MILLIS = 300
+internal const val SHADOW_FADE_MILLIS = 100

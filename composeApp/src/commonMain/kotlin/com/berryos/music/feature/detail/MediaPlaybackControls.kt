@@ -1,4 +1,4 @@
-package com.berryos.music.feature.album
+package com.berryos.music.feature.detail
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
@@ -47,12 +47,12 @@ private val SLIDER_HEIGHT = 48.dp
 private const val MEDIUM_ALPHA = 0.54f
 
 @Composable
-internal fun AlbumPlaybackControls(
+internal fun MediaPlaybackControls(
     colors: CoverColors?,
     previousCenter: Offset,
     nextCenter: Offset,
-    volumeDownCenter: Offset,
     volumeUpCenter: Offset,
+    muteCenter: Offset,
     controlsAlpha: Float,
     volumeAlpha: Float,
     modifier: Modifier = Modifier,
@@ -67,10 +67,10 @@ internal fun AlbumPlaybackControls(
     val volumeLayerAlpha = volumeAlpha
     val volumeHalf = with(density) { VOLUME_ICON_SIZE.toPx() / 2f }
     val sliderGap = with(density) { SLIDER_GAP.toPx() }
-    val sliderLeft = volumeDownCenter.x + volumeHalf + sliderGap
+    val sliderLeft = muteCenter.x + volumeHalf + sliderGap
     val sliderRight = volumeUpCenter.x - volumeHalf - sliderGap
     val sliderWidth = (sliderRight - sliderLeft).coerceAtLeast(0f)
-    val sliderTop = volumeDownCenter.y - with(density) { SLIDER_HEIGHT.toPx() } / 2f
+    val sliderTop = muteCenter.y - with(density) { SLIDER_HEIGHT.toPx() } / 2f
     var volume by remember { mutableStateOf(1f) }
     Box(modifier = modifier) {
         Box(
@@ -88,7 +88,7 @@ internal fun AlbumPlaybackControls(
             VolumeIcon(
                 icon = Res.drawable.ic_volume_mute,
                 contentDescription = stringResource(Res.string.mute),
-                center = volumeDownCenter,
+                center = muteCenter,
                 tint = mediumColor,
             )
             VolumeIcon(
