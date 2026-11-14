@@ -107,12 +107,16 @@ class LocalLibrarySource(context: Context) : LibrarySource {
     private fun artistsFrom(tracks: List<Track>): List<Artist> = tracks
         .groupBy { it.artistId }
         .map { (artistId, artistTracks) ->
+            val first = artistTracks.first()
             Artist(
                 source = SourceKey.Local,
                 id = artistId,
-                name = artistTracks.first().artist,
+                name = first.artist,
                 albumCount = artistTracks.map { it.albumId }.distinct().size,
                 trackCount = artistTracks.size,
+                coverUrl = first.albumId.toLongOrNull()?.let { id ->
+                    ContentUris.withAppendedId(Uri.parse(ALBUM_ART_URI), id).toString()
+                },
             )
         }
 

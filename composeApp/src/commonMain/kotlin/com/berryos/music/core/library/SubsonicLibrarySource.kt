@@ -79,12 +79,14 @@ class SubsonicLibrarySource(
             )
         }
         val artists = tracks.groupBy { it.artistId }.map { (artistId, artistTracks) ->
+            val first = artistTracks.first()
             Artist(
                 source = serverKey,
                 id = artistId,
-                name = artistTracks.first().artist,
+                name = first.artist,
                 albumCount = artistTracks.map { it.albumId }.distinct().size,
                 trackCount = artistTracks.size,
+                coverUrl = client.coverUrl(username, jwt, first.albumId),
             )
         }
         return LibrarySnapshot(tracks = tracks, albums = albumModels, artists = artists)

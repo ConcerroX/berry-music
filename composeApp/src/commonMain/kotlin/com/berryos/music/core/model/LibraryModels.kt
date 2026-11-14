@@ -29,7 +29,14 @@ data class Album(
     val coverUrl: String? = null,
 )
 
-data class Artist(val source: SourceKey, val id: String, val name: String, val albumCount: Int, val trackCount: Int)
+data class Artist(
+    val source: SourceKey,
+    val id: String,
+    val name: String,
+    val albumCount: Int,
+    val trackCount: Int,
+    val coverUrl: String? = null,
+)
 
 data class LibrarySnapshot(
     val tracks: List<Track> = emptyList(),
