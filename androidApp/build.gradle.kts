@@ -15,6 +15,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "0.1.0"
+        manifestPlaceholders["logtoRedirectScheme"] = "com.berryos.music"
     }
 
     buildTypes {

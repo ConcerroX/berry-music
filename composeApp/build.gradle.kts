@@ -33,16 +33,24 @@ kotlin {
             implementation(libs.lifecycle.viewmodel.navigation3)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
             implementation("art.rippledesign:compose-rui")
         }
 
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.ktor.client.mock)
         }
 
         androidMain.dependencies {
             implementation(libs.androidx.media3.exoplayer)
             implementation(libs.androidx.media3.session)
+            implementation(libs.logto.android)
+            implementation(libs.ktor.client.okhttp)
         }
     }
 }
