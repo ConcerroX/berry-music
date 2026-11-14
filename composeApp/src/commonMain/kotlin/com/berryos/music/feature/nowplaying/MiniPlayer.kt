@@ -19,7 +19,11 @@ import com.berryos.music.resources.Res
 import com.berryos.music.resources.ic_pause
 import com.berryos.music.resources.ic_play_arrow
 import com.berryos.music.resources.ic_skip_next
+import com.berryos.music.resources.next
+import com.berryos.music.resources.pause
+import com.berryos.music.resources.play
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun MiniPlayer(state: PlaybackState, onClick: () -> Unit, onTogglePlayPause: () -> Unit, onNext: () -> Unit) {
@@ -41,13 +45,15 @@ fun MiniPlayer(state: PlaybackState, onClick: () -> Unit, onTogglePlayPause: () 
                     painter = painterResource(
                         if (state.isPlaying) Res.drawable.ic_pause else Res.drawable.ic_play_arrow,
                     ),
-                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                    contentDescription = stringResource(
+                        if (state.isPlaying) Res.string.pause else Res.string.play,
+                    ),
                 )
             }
             IconButton(onClick = onNext) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_skip_next),
-                    contentDescription = "Next",
+                    contentDescription = stringResource(Res.string.next),
                 )
             }
         }

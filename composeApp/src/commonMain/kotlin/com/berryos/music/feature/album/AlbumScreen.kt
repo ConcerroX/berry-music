@@ -17,19 +17,29 @@ import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.album
+import com.berryos.music.resources.album_artist_year
+import com.berryos.music.resources.album_not_found
+import com.berryos.music.resources.loading_library
+import com.berryos.music.resources.track_count
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun AlbumScreen(albumId: String, state: LibraryUiState, actions: AppActions) {
     when (state) {
-        LibraryUiState.Loading -> PlaceholderScreen("Album", "Loading library...")
+        LibraryUiState.Loading -> PlaceholderScreen(
+            stringResource(Res.string.album),
+            stringResource(Res.string.loading_library),
+        )
 
-        is LibraryUiState.Error -> PlaceholderScreen("Album", state.message)
+        is LibraryUiState.Error -> PlaceholderScreen(stringResource(Res.string.album), state.message)
 
         is LibraryUiState.Ready -> {
             val album = state.snapshot.albums.firstOrNull { it.id == albumId }
             if (album == null) {
-                PlaceholderScreen("Album", "Album not found.")
+                PlaceholderScreen(stringResource(Res.string.album), stringResource(Res.string.album_not_found))
             } else {
                 val tracks = state.snapshot.tracks
                     .filter { it.source == album.source && it.albumId == album.id }
@@ -39,11 +49,11 @@ fun AlbumScreen(albumId: String, state: LibraryUiState, actions: AppActions) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(text = album.title, style = MaterialTheme.typography.h5)
                             Text(
-                                text = "${album.artist} · ${album.year}",
+                                text = stringResource(Res.string.album_artist_year, album.artist, album.year),
                                 style = MaterialTheme.typography.body2,
                             )
                             Text(
-                                text = "${tracks.size} tracks",
+                                text = stringResource(Res.string.track_count, tracks.size),
                                 style = MaterialTheme.typography.caption,
                             )
                         }

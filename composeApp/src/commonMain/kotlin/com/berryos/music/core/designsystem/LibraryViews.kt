@@ -15,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.refresh
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun LibraryLoading() {
@@ -35,7 +38,7 @@ fun LibraryMessage(title: String, message: String, onRefresh: () -> Unit) {
         Text(text = message, style = MaterialTheme.typography.body2)
         Spacer(modifier = Modifier.height(16.dp))
         TextButton(onClick = onRefresh) {
-            Text("Refresh")
+            Text(stringResource(Res.string.refresh))
         }
     }
 }

@@ -11,6 +11,12 @@ import androidx.compose.ui.Modifier
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.artist_summary
+import com.berryos.music.resources.could_not_load_music
+import com.berryos.music.resources.no_artists_found
+import com.berryos.music.resources.no_artists_message
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -18,19 +24,33 @@ fun ArtistsScreen(state: LibraryUiState, onRefresh: () -> Unit) {
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
-        is LibraryUiState.Error -> LibraryMessage("Couldn't load music", state.message, onRefresh)
+        is LibraryUiState.Error -> LibraryMessage(
+            stringResource(Res.string.could_not_load_music),
+            state.message,
+            onRefresh,
+        )
 
         is LibraryUiState.Ready -> {
             val artists = state.snapshot.artists
             if (artists.isEmpty()) {
-                LibraryMessage("No artists found", "Scanned artists will appear here.", onRefresh)
+                LibraryMessage(
+                    stringResource(Res.string.no_artists_found),
+                    stringResource(Res.string.no_artists_message),
+                    onRefresh,
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(artists) { artist ->
                         ListItem(
                             text = { Text(artist.name) },
                             secondaryText = {
-                                Text("${artist.albumCount} albums · ${artist.trackCount} tracks")
+                                Text(
+                                    stringResource(
+                                        Res.string.artist_summary,
+                                        artist.albumCount,
+                                        artist.trackCount,
+                                    ),
+                                )
                             },
                         )
                     }

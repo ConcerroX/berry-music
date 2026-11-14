@@ -9,18 +9,27 @@ import com.berryos.music.core.model.Artist
 import com.berryos.music.core.model.LibrarySnapshot
 import com.berryos.music.core.model.SourceKey
 import com.berryos.music.core.model.Track
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.unknown_album
+import com.berryos.music.resources.unknown_artist
+import com.berryos.music.resources.unknown_title
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.getString
 
 class LocalLibrarySource(context: Context) : LibrarySource {
     private val resolver: ContentResolver = context.applicationContext.contentResolver
 
     override suspend fun load(): LibrarySnapshot = withContext(Dispatchers.IO) {
-        val tracks = queryTracks()
+        val tracks = queryTracks(
+            unknownTitle = getString(Res.string.unknown_title),
+            unknownArtist = getString(Res.string.unknown_artist),
+            unknownAlbum = getString(Res.string.unknown_album),
+        )
         LibrarySnapshot(tracks = tracks, albums = albumsFrom(tracks), artists = artistsFrom(tracks))
     }
 
-    private fun queryTracks(): List<Track> {
+    private fun queryTracks(unknownTitle: String, unknownArtist: String, unknownAlbum: String): List<Track> {
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
@@ -54,16 +63,16 @@ class LocalLibrarySource(context: Context) : LibrarySource {
 
                 buildList {
                     while (cursor.moveToNext()) {
-                        val artist = cursor.getString(artistColumn) ?: UNKNOWN_ARTIST
+                        val artist = cursor.getString(artistColumn) ?: unknownArtist
                         val artistId = cursor.getLong(artistIdColumn)
                         add(
                             Track(
                                 source = SourceKey.Local,
                                 id = cursor.getLong(idColumn).toString(),
-                                title = cursor.getString(titleColumn) ?: UNKNOWN_TITLE,
+                                title = cursor.getString(titleColumn) ?: unknownTitle,
                                 artist = artist,
                                 artistId = if (artistId == 0L) artist else artistId.toString(),
-                                album = cursor.getString(albumColumn) ?: UNKNOWN_ALBUM,
+                                album = cursor.getString(albumColumn) ?: unknownAlbum,
                                 albumId = cursor.getLong(albumIdColumn).toString(),
                                 durationMs = cursor.getLong(durationColumn),
                                 trackNumber = cursor.getInt(trackColumn) % TRACK_MODULO,
@@ -105,8 +114,5 @@ class LocalLibrarySource(context: Context) : LibrarySource {
     companion object {
         private const val MIN_DURATION_MS = 10_000L
         private const val TRACK_MODULO = 1000
-        private const val UNKNOWN_TITLE = "Unknown title"
-        private const val UNKNOWN_ARTIST = "Unknown artist"
-        private const val UNKNOWN_ALBUM = "Unknown album"
     }
 }

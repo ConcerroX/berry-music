@@ -22,12 +22,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.close
 import com.berryos.music.resources.ic_keyboard_arrow_down
 import com.berryos.music.resources.ic_pause
 import com.berryos.music.resources.ic_play_arrow
 import com.berryos.music.resources.ic_skip_next
 import com.berryos.music.resources.ic_skip_previous
+import com.berryos.music.resources.next
+import com.berryos.music.resources.now_playing
+import com.berryos.music.resources.pause
+import com.berryos.music.resources.play
+import com.berryos.music.resources.playing
+import com.berryos.music.resources.previous
+import com.berryos.music.resources.queue
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PlayingSheet(
@@ -47,10 +56,10 @@ fun PlayingSheet(
             IconButton(onClick = onDismiss) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_keyboard_arrow_down),
-                    contentDescription = "Close",
+                    contentDescription = stringResource(Res.string.close),
                 )
             }
-            Text("Now playing", style = MaterialTheme.typography.subtitle1)
+            Text(stringResource(Res.string.now_playing), style = MaterialTheme.typography.subtitle1)
         }
         Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
@@ -62,7 +71,7 @@ fun PlayingSheet(
                 IconButton(onClick = onPrevious) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_skip_previous),
-                        contentDescription = "Previous",
+                        contentDescription = stringResource(Res.string.previous),
                     )
                 }
                 IconButton(onClick = onTogglePlayPause) {
@@ -70,18 +79,20 @@ fun PlayingSheet(
                         painter = painterResource(
                             if (state.isPlaying) Res.drawable.ic_pause else Res.drawable.ic_play_arrow,
                         ),
-                        contentDescription = if (state.isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(
+                            if (state.isPlaying) Res.string.pause else Res.string.play,
+                        ),
                     )
                 }
                 IconButton(onClick = onNext) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_skip_next),
-                        contentDescription = "Next",
+                        contentDescription = stringResource(Res.string.next),
                     )
                 }
             }
         }
-        Text("Queue", style = MaterialTheme.typography.subtitle1)
+        Text(stringResource(Res.string.queue), style = MaterialTheme.typography.subtitle1)
         QueueList(state, onPlayQueueItem, Modifier.weight(1f))
     }
 }
@@ -105,7 +116,7 @@ private fun QueueList(state: PlaybackState, onPlayQueueItem: (Int) -> Unit, modi
                 },
                 secondaryText = { Text(item.artist) },
                 trailing = if (index == state.currentIndex) {
-                    { Text("Playing") }
+                    { Text(stringResource(Res.string.playing)) }
                 } else {
                     null
                 },

@@ -10,14 +10,26 @@ import com.berryos.music.app.navigation.LibrarySettingsRoute
 import com.berryos.music.app.navigation.PlaybackSettingsRoute
 import com.berryos.music.app.navigation.ServersRoute
 import com.berryos.music.core.designsystem.PlaceholderScreen
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.about
+import com.berryos.music.resources.appearance
+import com.berryos.music.resources.library
+import com.berryos.music.resources.playback
+import com.berryos.music.resources.servers
+import com.berryos.music.resources.settings
+import com.berryos.music.resources.settings_subtitle
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(actions: AppActions) {
-    PlaceholderScreen(title = "Settings", subtitle = "Appearance, playback, library, and servers.") {
-        TextButton(onClick = { actions.open(AppearanceRoute) }) { Text("Appearance") }
-        TextButton(onClick = { actions.open(PlaybackSettingsRoute) }) { Text("Playback") }
-        TextButton(onClick = { actions.open(LibrarySettingsRoute) }) { Text("Library") }
-        TextButton(onClick = { actions.open(ServersRoute) }) { Text("Servers") }
-        TextButton(onClick = { actions.open(AboutRoute) }) { Text("About") }
+    PlaceholderScreen(
+        title = stringResource(Res.string.settings),
+        subtitle = stringResource(Res.string.settings_subtitle),
+    ) {
+        TextButton(onClick = { actions.open(AppearanceRoute) }) { Text(stringResource(Res.string.appearance)) }
+        TextButton(onClick = { actions.open(PlaybackSettingsRoute) }) { Text(stringResource(Res.string.playback)) }
+        TextButton(onClick = { actions.open(LibrarySettingsRoute) }) { Text(stringResource(Res.string.library)) }
+        TextButton(onClick = { actions.open(ServersRoute) }) { Text(stringResource(Res.string.servers)) }
+        TextButton(onClick = { actions.open(AboutRoute) }) { Text(stringResource(Res.string.about)) }
     }
 }

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Berry Music</string>
+
+    <string name="tab_home">Home</string>
+    <string name="tab_albums">Albums</string>
+    <string name="tab_songs">Songs</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="tab_artists">Artists</string>
+
+    <string name="search">Search</string>
+    <string name="settings">Settings</string>
+    <string name="appearance">Appearance</string>
+    <string name="playback">Playback</string>
+    <string name="library">Library</string>
+    <string name="servers">Servers</string>
+    <string name="about">About</string>
+    <string name="album">Album</string>
+    <string name="artist">Artist</string>
+    <string name="playlist">Playlist</string>
+    <string name="folder">Folder</string>
+    <string name="server">Server</string>
+    <string name="add_server">Add server</string>
+
+    <string name="refresh">Refresh</string>
+    <string name="back">Back</string>
+    <string name="menu">Menu</string>
+    <string name="close">Close</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="now_playing">Now playing</string>
+    <string name="queue">Queue</string>
+    <string name="playing">Playing</string>
+
+    <string name="profile">Profile</string>
+    <string name="expand">Expand</string>
+    <string name="local_music">Local Music</string>
+    <string name="account_service_name">Berry Live Music</string>
+    <string name="select_account">Select account</string>
+    <string name="add_account">Add account</string>
+    <string name="signing_in">Signing in...</string>
+    <string name="sign_in_failed">Sign-in failed</string>
+
+    <string name="loading_library">Loading library...</string>
+    <string name="loading_local_library">Loading local library...</string>
+    <string name="album_not_found">Album not found.</string>
+    <string name="album_artist_year">%1$s · %2$d</string>
+    <string name="track_count">%1$d tracks</string>
+    <string name="album_summary">%1$s · %2$d tracks</string>
+    <string name="artist_summary">%1$d albums · %2$d tracks</string>
+    <string name="track_summary">%1$s · %2$s</string>
+    <string name="library_summary">%1$d tracks · %2$d albums · %3$d artists</string>
+    <string name="could_not_load_music">Could not load music</string>
+    <string name="no_albums_found">No albums found</string>
+    <string name="no_albums_message">Scanned music albums will appear here.</string>
+    <string name="no_artists_found">No artists found</string>
+    <string name="no_artists_message">Scanned artists will appear here.</string>
+    <string name="no_music_found">No music found</string>
+    <string name="no_music_message">Grant audio permission or add music files to the device.</string>
+    <string name="failed_to_load_library">Failed to load library</string>
+
+    <string name="unknown_title">Unknown title</string>
+    <string name="unknown_artist">Unknown artist</string>
+    <string name="unknown_album">Unknown album</string>
+
+    <string name="artist_id">Artist id: %1$s</string>
+    <string name="folder_id">Folder id: %1$s</string>
+    <string name="playlist_id">Playlist id: %1$s</string>
+    <string name="server_id">Server id: %1$s</string>
+    <string name="server_id_new">Server id: new</string>
+    <string name="album_detail">Album detail</string>
+    <string name="playlist_detail">Playlist detail</string>
+    <string name="server_detail">Server detail</string>
+    <string name="search_subtitle">Local and Subsonic search results.</string>
+    <string name="playlists_subtitle">Playlist list.</string>
+    <string name="settings_subtitle">Appearance, playback, library, and servers.</string>
+    <string name="appearance_subtitle">Theme, accent color, and layout.</string>
+    <string name="playback_subtitle">Audio focus, resume, and crossfade.</string>
+    <string name="library_subtitle">Scanning, filters, and excluded folders.</string>
+    <string name="servers_subtitle">Subsonic server list and connection status.</string>
+    <string name="about_subtitle">Berry Music.</string>
+</resources>

@@ -14,6 +14,12 @@ import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.album_summary
+import com.berryos.music.resources.could_not_load_music
+import com.berryos.music.resources.no_albums_found
+import com.berryos.music.resources.no_albums_message
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -21,19 +27,35 @@ fun AlbumsScreen(state: LibraryUiState, actions: AppActions, onRefresh: () -> Un
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
-        is LibraryUiState.Error -> LibraryMessage("Couldn't load music", state.message, onRefresh)
+        is LibraryUiState.Error -> LibraryMessage(
+            stringResource(Res.string.could_not_load_music),
+            state.message,
+            onRefresh,
+        )
 
         is LibraryUiState.Ready -> {
             val albums = state.snapshot.albums
             if (albums.isEmpty()) {
-                LibraryMessage("No albums found", "Scanned music albums will appear here.", onRefresh)
+                LibraryMessage(
+                    stringResource(Res.string.no_albums_found),
+                    stringResource(Res.string.no_albums_message),
+                    onRefresh,
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(albums) { album ->
                         ListItem(
                             modifier = Modifier.clickable { actions.open(AlbumRoute(album.id)) },
                             text = { Text(album.title) },
-                            secondaryText = { Text("${album.artist} · ${album.trackCount} tracks") },
+                            secondaryText = {
+                                Text(
+                                    stringResource(
+                                        Res.string.album_summary,
+                                        album.artist,
+                                        album.trackCount,
+                                    ),
+                                )
+                            },
                         )
                     }
                 }

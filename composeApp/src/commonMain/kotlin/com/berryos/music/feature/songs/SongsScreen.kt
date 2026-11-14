@@ -14,6 +14,12 @@ import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.could_not_load_music
+import com.berryos.music.resources.no_music_found
+import com.berryos.music.resources.no_music_message
+import com.berryos.music.resources.track_summary
+import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -21,14 +27,18 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions, onRefresh: () -> Uni
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
-        is LibraryUiState.Error -> LibraryMessage("Couldn't load music", state.message, onRefresh)
+        is LibraryUiState.Error -> LibraryMessage(
+            stringResource(Res.string.could_not_load_music),
+            state.message,
+            onRefresh,
+        )
 
         is LibraryUiState.Ready -> {
             val tracks = state.snapshot.tracks
             if (tracks.isEmpty()) {
                 LibraryMessage(
-                    title = "No music found",
-                    message = "Grant audio permission or add music files to the device.",
+                    title = stringResource(Res.string.no_music_found),
+                    message = stringResource(Res.string.no_music_message),
                     onRefresh = onRefresh,
                 )
             } else {
@@ -37,7 +47,9 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions, onRefresh: () -> Uni
                         ListItem(
                             modifier = Modifier.clickable { actions.play(tracks, index) },
                             text = { Text(track.title) },
-                            secondaryText = { Text("${track.artist} · ${track.album}") },
+                            secondaryText = {
+                                Text(stringResource(Res.string.track_summary, track.artist, track.album))
+                            },
                             trailing = { Text(formatDuration(track.durationMs)) },
                         )
                     }
