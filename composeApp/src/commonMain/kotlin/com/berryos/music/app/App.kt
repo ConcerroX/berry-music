@@ -1,5 +1,6 @@
 package com.berryos.music.app
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +42,7 @@ import androidx.navigation3.ui.NavDisplay
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
 import art.rippledesign.compose.rui.RTopAppBar
+import art.rippledesign.compose.rui.fadeThrough
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
@@ -289,7 +291,7 @@ private fun AppChrome(
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     AppTopBar(title, onBack, openDrawer)
-                    AppNavDisplay(selectedTab.backStack, actions, libraryState, Modifier.weight(1f))
+                    TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
                     if (playbackState.currentTrack != null) {
                         MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                     }
@@ -322,7 +324,7 @@ private fun AppChrome(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         AppTopBar(title, onBack, null)
-                        AppNavDisplay(selectedTab.backStack, actions, libraryState, Modifier.weight(1f))
+                        TabContent(tabs, selectedTabIndex, actions, libraryState, Modifier.weight(1f))
                         if (playbackState.currentTrack != null) {
                             MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                         }
@@ -403,6 +405,23 @@ private fun TabIcon(tab: TabItem, selected: Boolean) {
         painter = painterResource(if (selected) tab.filledIcon else tab.outlinedIcon),
         contentDescription = stringResource(tab.label),
     )
+}
+
+@Composable
+private fun TabContent(
+    tabs: List<TabItem>,
+    selectedIndex: Int,
+    actions: AppActions,
+    libraryState: LibraryUiState,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedContent(
+        targetState = selectedIndex,
+        transitionSpec = { fadeThrough() },
+        modifier = modifier,
+    ) { index ->
+        AppNavDisplay(tabs[index].backStack, actions, libraryState, Modifier.fillMaxSize())
+    }
 }
 
 @Composable
