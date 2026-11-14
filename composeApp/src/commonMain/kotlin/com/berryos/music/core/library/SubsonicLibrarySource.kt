@@ -68,7 +68,15 @@ class SubsonicLibrarySource(
     ): LibrarySnapshot {
         val tracks = albums.flatMapIndexed { index, _ -> songs[index].map { it.toTrack(username, jwt) } }
         val albumModels = albums.map { album ->
-            Album(serverKey, album.id, album.name, album.artist, album.songCount, album.year)
+            Album(
+                source = serverKey,
+                id = album.id,
+                title = album.name,
+                artist = album.artist,
+                trackCount = album.songCount,
+                year = album.year,
+                coverUrl = client.coverUrl(username, jwt, album.id),
+            )
         }
         val artists = tracks.groupBy { it.artistId }.map { (artistId, artistTracks) ->
             Artist(

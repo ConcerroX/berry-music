@@ -27,6 +27,13 @@ class SubsonicClient(private val client: HttpClient, private val baseUrl: String
         return builder.buildString()
     }
 
+    fun coverUrl(username: String, jwt: String, albumId: String): String {
+        val builder = URLBuilder("$baseUrl/rest/getCoverArt")
+        builder.parameters.append("id", albumId)
+        builder.appendAuth(username, jwt)
+        return builder.buildString()
+    }
+
     private fun URLBuilder.appendAuth(username: String, jwt: String) {
         parameters.append("u", username)
         parameters.append("jwt", jwt)

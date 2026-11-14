@@ -26,6 +26,7 @@ data class Album(
     val artist: String,
     val trackCount: Int,
     val year: Int,
+    val coverUrl: String? = null,
 )
 
 data class Artist(val source: SourceKey, val id: String, val name: String, val albumCount: Int, val trackCount: Int)

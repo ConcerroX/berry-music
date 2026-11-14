@@ -21,8 +21,8 @@
     <string name="folder">Folder</string>
     <string name="server">Server</string>
     <string name="add_server">Add server</string>
-
     <string name="refresh">Refresh</string>
+
     <string name="back">Back</string>
     <string name="menu">Menu</string>
     <string name="close">Close</string>
@@ -36,6 +36,7 @@
 
     <string name="profile">Profile</string>
     <string name="expand">Expand</string>
+    <string name="more_options">More options</string>
     <string name="local_music">Local Music</string>
     <string name="account_service_name">Berry Live Music</string>
     <string name="select_account">Select account</string>

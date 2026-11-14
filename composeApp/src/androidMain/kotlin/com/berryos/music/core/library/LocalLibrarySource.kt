@@ -1,7 +1,9 @@
 package com.berryos.music.core.library
 
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import com.berryos.music.core.model.Album
@@ -96,6 +98,9 @@ class LocalLibrarySource(context: Context) : LibrarySource {
                 artist = first.artist,
                 trackCount = albumTracks.size,
                 year = first.year,
+                coverUrl = albumId.toLongOrNull()?.let { id ->
+                    ContentUris.withAppendedId(Uri.parse(ALBUM_ART_URI), id).toString()
+                },
             )
         }
 
@@ -114,5 +119,6 @@ class LocalLibrarySource(context: Context) : LibrarySource {
     companion object {
         private const val MIN_DURATION_MS = 10_000L
         private const val TRACK_MODULO = 1000
+        private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
     }
 }
