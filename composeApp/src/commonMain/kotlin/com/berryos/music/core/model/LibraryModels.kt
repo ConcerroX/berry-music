@@ -16,6 +16,7 @@ data class Track(
     val durationMs: Long,
     val trackNumber: Int,
     val year: Int,
+    val streamUrl: String? = null,
 )
 
 data class Album(

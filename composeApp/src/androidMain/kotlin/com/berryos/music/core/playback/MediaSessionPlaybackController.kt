@@ -64,20 +64,22 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
             pendingPlay = tracks to startIndex
             return
         }
-        val playable = tracks.filter { it.source == SourceKey.Local }
+        val playable = tracks.filter { it.source == SourceKey.Local || it.streamUrl != null }
         if (playable.isEmpty()) return
         this.tracks = playable
         val items = playable.map { track ->
             MediaItem.Builder()
-                .setMediaId(track.id)
-                .setUri(localUri(track))
+                .setMediaId("${track.source}:${track.id}")
+                .setUri(track.streamUrl?.let(Uri::parse) ?: localUri(track))
                 .setMediaMetadata(
                     MediaMetadata.Builder()
                         .setTitle(track.title)
                         .setArtist(track.artist)
                         .setAlbumTitle(track.album)
                         .setDurationMs(track.durationMs)
-                        .setArtworkUri(albumArtUri(track.albumId))
+                        .setArtworkUri(
+                            if (track.source == SourceKey.Local) albumArtUri(track.albumId) else null,
+                        )
                         .build(),
                 )
                 .build()

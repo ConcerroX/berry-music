@@ -13,6 +13,7 @@ import com.berryos.music.app.App
 import com.berryos.music.core.auth.AndroidLogtoAuthController
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LocalLibrarySource
+import com.berryos.music.core.library.SubsonicLibrarySource
 import com.berryos.music.core.playback.MediaSessionPlaybackController
 
 class MainActivity : ComponentActivity() {
@@ -49,9 +50,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showApp() {
-        val repository = LibraryRepository(listOf(LocalLibrarySource(applicationContext)))
-        val playbackController = MediaSessionPlaybackController(applicationContext)
         val authController = AndroidLogtoAuthController(this)
+        val repository = LibraryRepository(
+            listOf(
+                LocalLibrarySource(applicationContext),
+                SubsonicLibrarySource(account = { authController.state.value.activeAccount }),
+            ),
+        )
+        val playbackController = MediaSessionPlaybackController(applicationContext)
         playback = playbackController
         auth = authController
         setContent {
