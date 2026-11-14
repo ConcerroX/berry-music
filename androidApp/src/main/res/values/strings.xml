@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Berry Music</string>
+    <string name="account_label">Berry</string>
+    <string name="account_tokens_inside_app">Berry tokens are only issued inside the app</string>
+    <string name="account_canceled">Canceled</string>
 </resources>
