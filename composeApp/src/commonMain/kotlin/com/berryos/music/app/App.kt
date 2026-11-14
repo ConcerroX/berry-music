@@ -5,12 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.LocalContentColor
 import androidx.compose.material.ModalBottomSheetLayout
 import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.NavigationRail
@@ -19,7 +17,6 @@ import androidx.compose.material.NavigationRailItem
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.material.TextButton
 import androidx.compose.material.rememberDrawerState
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material.rememberScaffoldState
@@ -115,7 +112,6 @@ import com.berryos.music.resources.library
 import com.berryos.music.resources.menu
 import com.berryos.music.resources.playback
 import com.berryos.music.resources.playlist
-import com.berryos.music.resources.refresh
 import com.berryos.music.resources.search
 import com.berryos.music.resources.server
 import com.berryos.music.resources.servers
@@ -125,6 +121,7 @@ import com.berryos.music.resources.tab_artists
 import com.berryos.music.resources.tab_home
 import com.berryos.music.resources.tab_playlists
 import com.berryos.music.resources.tab_songs
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
@@ -133,12 +130,16 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun App(libraryRepository: LibraryRepository, playback: PlaybackController, auth: AuthController) {
+fun App(
+    libraryRepository: LibraryRepository,
+    playback: PlaybackController,
+    auth: AuthController,
+    libraryChanges: Flow<Unit>,
+) {
     BerryTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             val libraryStore = remember(libraryRepository) { LibraryStore(libraryRepository) }
             val scope = rememberCoroutineScope()
-            val refresh: () -> Unit = { scope.launch { libraryStore.refresh() } }
             val playbackState by playback.state.collectAsState()
             val authState by auth.state.collectAsState()
             val sheetState = rememberModalBottomSheetState(
@@ -146,7 +147,10 @@ fun App(libraryRepository: LibraryRepository, playback: PlaybackController, auth
                 skipHalfExpanded = true,
             )
             val openPlayer: () -> Unit = { scope.launch { sheetState.show() } }
-            LaunchedEffect(libraryStore) { libraryStore.refresh() }
+            LaunchedEffect(libraryStore, libraryChanges) {
+                libraryStore.refresh()
+                launch { libraryChanges.collect { libraryStore.refresh() } }
+            }
             ModalBottomSheetLayout(
                 sheetState = sheetState,
                 sheetContent = {
@@ -164,7 +168,6 @@ fun App(libraryRepository: LibraryRepository, playback: PlaybackController, auth
             ) {
                 AppShell(
                     libraryStore.state.filtered(authState.showingLocal),
-                    refresh,
                     playback,
                     playbackState,
                     authState,
@@ -186,7 +189,6 @@ internal data class TabItem(
 @Composable
 private fun AppShell(
     libraryState: LibraryUiState,
-    onRefresh: () -> Unit,
     playback: PlaybackController,
     playbackState: PlaybackState,
     authState: AuthState,
@@ -219,7 +221,6 @@ private fun AppShell(
         selectedTabIndex,
         actions,
         libraryState,
-        onRefresh,
         playbackState,
         authState,
         auth,
@@ -256,7 +257,6 @@ private fun AppChrome(
     selectedTabIndex: Int,
     actions: AppActions,
     libraryState: LibraryUiState,
-    onRefresh: () -> Unit,
     playbackState: PlaybackState,
     authState: AuthState,
     auth: AuthController,
@@ -288,8 +288,8 @@ private fun AppChrome(
         ) { _ ->
             if (compact) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    AppTopBar(title, onRefresh.takeIf { isRoot }, onBack, openDrawer)
-                    AppNavDisplay(selectedTab.backStack, actions, libraryState, onRefresh, Modifier.weight(1f))
+                    AppTopBar(title, onBack, openDrawer)
+                    AppNavDisplay(selectedTab.backStack, actions, libraryState, Modifier.weight(1f))
                     if (playbackState.currentTrack != null) {
                         MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                     }
@@ -321,8 +321,8 @@ private fun AppChrome(
                         }
                     }
                     Column(modifier = Modifier.weight(1f)) {
-                        AppTopBar(title, onRefresh.takeIf { isRoot }, onBack, null)
-                        AppNavDisplay(selectedTab.backStack, actions, libraryState, onRefresh, Modifier.weight(1f))
+                        AppTopBar(title, onBack, null)
+                        AppNavDisplay(selectedTab.backStack, actions, libraryState, Modifier.weight(1f))
                         if (playbackState.currentTrack != null) {
                             MiniPlayer(playbackState, onOpenPlayer, actions.togglePlayPause, actions.next)
                         }
@@ -363,7 +363,7 @@ private fun routeTitle(route: NavKey?): String {
 }
 
 @Composable
-private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Unit)?, onMenu: (() -> Unit)?) {
+private fun AppTopBar(title: String, onBack: (() -> Unit)?, onMenu: (() -> Unit)?) {
     val back = onBack
     val menu = onMenu
     val navigationIcon: (@Composable () -> Unit)? = when {
@@ -394,16 +394,6 @@ private fun AppTopBar(title: String, onRefresh: (() -> Unit)?, onBack: (() -> Un
     RTopAppBar(
         title = { Text(title) },
         navigationIcon = navigationIcon,
-        actions = {
-            onRefresh?.let { refresh ->
-                TextButton(
-                    onClick = refresh,
-                    colors = ButtonDefaults.textButtonColors(contentColor = LocalContentColor.current),
-                ) {
-                    Text(stringResource(Res.string.refresh))
-                }
-            }
-        },
     )
 }
 
@@ -420,7 +410,6 @@ private fun AppNavDisplay(
     backStack: NavBackStack<NavKey>,
     actions: AppActions,
     libraryState: LibraryUiState,
-    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NavDisplay(
@@ -433,10 +422,10 @@ private fun AppNavDisplay(
         ),
         entryProvider = entryProvider {
             entry<HomeRoute> { HomeScreen(actions, libraryState) }
-            entry<AlbumsRoute> { AlbumsScreen(libraryState, actions, onRefresh) }
-            entry<SongsRoute> { SongsScreen(libraryState, actions, onRefresh) }
+            entry<AlbumsRoute> { AlbumsScreen(libraryState, actions) }
+            entry<SongsRoute> { SongsScreen(libraryState, actions) }
             entry<PlaylistsRoute> { PlaylistsScreen(actions) }
-            entry<ArtistsRoute> { ArtistsScreen(libraryState, onRefresh) }
+            entry<ArtistsRoute> { ArtistsScreen(libraryState) }
             entry<SearchRoute> { SearchScreen(actions) }
             entry<SettingsRoute> { SettingsScreen(actions) }
             entry<AlbumRoute> { route -> AlbumScreen(route.albumId, libraryState, actions) }

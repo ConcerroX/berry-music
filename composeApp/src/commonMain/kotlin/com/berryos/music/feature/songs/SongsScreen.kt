@@ -23,14 +23,13 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun SongsScreen(state: LibraryUiState, actions: AppActions, onRefresh: () -> Unit) {
+fun SongsScreen(state: LibraryUiState, actions: AppActions) {
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
         is LibraryUiState.Error -> LibraryMessage(
             stringResource(Res.string.could_not_load_music),
             state.message,
-            onRefresh,
         )
 
         is LibraryUiState.Ready -> {
@@ -39,7 +38,6 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions, onRefresh: () -> Uni
                 LibraryMessage(
                     title = stringResource(Res.string.no_music_found),
                     message = stringResource(Res.string.no_music_message),
-                    onRefresh = onRefresh,
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

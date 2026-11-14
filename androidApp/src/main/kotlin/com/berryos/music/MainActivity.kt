@@ -14,6 +14,7 @@ import com.berryos.music.core.auth.AndroidLogtoAuthController
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LocalLibrarySource
 import com.berryos.music.core.library.SubsonicLibrarySource
+import com.berryos.music.core.library.mediaStoreChanges
 import com.berryos.music.core.playback.MediaSessionPlaybackController
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
         playback = playbackController
         auth = authController
         setContent {
-            App(repository, playbackController, authController)
+            App(repository, playbackController, authController, mediaStoreChanges(applicationContext))
         }
     }
 
