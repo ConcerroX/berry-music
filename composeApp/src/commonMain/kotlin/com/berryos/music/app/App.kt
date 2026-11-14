@@ -76,6 +76,7 @@ import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.CoverPaletteDialog
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
+import com.berryos.music.core.designsystem.rememberLoadedCoverColors
 import com.berryos.music.core.library.LibraryRepository
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
@@ -151,17 +152,27 @@ fun App(
     libraryChanges: Flow<Unit>,
     settings: AppSettingsRepository,
 ) {
-    BerryTheme {
+    val libraryStore = remember(libraryRepository) { LibraryStore(libraryRepository) }
+    val playbackState by playback.state.collectAsState()
+    val authState by auth.state.collectAsState()
+    val libraryState = libraryStore.state.filtered(authState.showingLocal)
+    val nowPlayingCoverUrl = remember(libraryState, playbackState.currentTrack) {
+        val track = playbackState.currentTrack
+        val snapshot = (libraryState as? LibraryUiState.Ready)?.snapshot
+        if (track == null || snapshot == null) {
+            null
+        } else {
+            snapshot.albums.firstOrNull { it.source == track.source && it.id == track.albumId }?.coverUrl
+        }
+    }
+    BerryTheme(accent = rememberLoadedCoverColors(nowPlayingCoverUrl)) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            val libraryStore = remember(libraryRepository) { LibraryStore(libraryRepository) }
-            val playbackState by playback.state.collectAsState()
-            val authState by auth.state.collectAsState()
             LaunchedEffect(libraryStore, libraryChanges) {
                 libraryStore.refresh()
                 launch { libraryChanges.collect { libraryStore.refresh() } }
             }
             AppShell(
-                libraryStore.state.filtered(authState.showingLocal),
+                libraryState,
                 playback,
                 playbackState,
                 authState,

@@ -4,13 +4,24 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.Color
 import androidx.palette.graphics.Palette
+import coil3.BitmapImage
 import coil3.Image
 import coil3.toBitmap
 import com.berryos.music.resources.Res
 
 actual fun Image.coverColorsOf(): CoverColors? {
-    val bitmap = toBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val bitmap = softwareBitmap()
     return if (bitmap.width > 0 && bitmap.height > 0) paletteColors(bitmap) else null
+}
+
+/** Drawing a hardware bitmap onto a software canvas throws, so copy it first. */
+private fun Image.softwareBitmap(): Bitmap {
+    val source = (this as? BitmapImage)?.bitmap
+    return when {
+        source == null -> toBitmap(width, height, Bitmap.Config.ARGB_8888)
+        source.config == Bitmap.Config.HARDWARE -> source.copy(Bitmap.Config.ARGB_8888, false)
+        else -> source
+    }
 }
 
 actual suspend fun defaultCoverColorsOf(): CoverColors? {
@@ -65,5 +76,4 @@ private fun accentSwatch(palette: Palette, background: Palette.Swatch): Palette.
 
 private const val PALETTE_SIZE = 64
 private const val MAX_COLORS = 16
-private const val MEDIUM_ALPHA = 0.54f
 private const val DEFAULT_COVER_PATH = "drawable/default_album_art.png"
