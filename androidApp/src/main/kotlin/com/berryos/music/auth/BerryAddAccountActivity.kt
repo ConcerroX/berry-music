@@ -15,7 +15,9 @@ import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 
-class BerryAddAccountActivity : ComponentActivity(), KoinComponent {
+class BerryAddAccountActivity :
+    ComponentActivity(),
+    KoinComponent {
     private var response: AccountAuthenticatorResponse? = null
     private var started = false
     private var responded = false

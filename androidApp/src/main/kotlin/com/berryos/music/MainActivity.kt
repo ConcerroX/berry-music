@@ -16,7 +16,9 @@ import com.berryos.music.core.playback.PlaybackController
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 
-class MainActivity : ComponentActivity(), KoinComponent {
+class MainActivity :
+    ComponentActivity(),
+    KoinComponent {
     private val auth: AndroidLogtoAuthController
         get() = get()
 
