@@ -42,8 +42,7 @@ internal class TrackListExpansionState(
 
     val connection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-            if (source != NestedScrollSource.Drag || !expandable || !atTop) return Offset.Zero
+            if (source != NestedScrollSource.Drag || !expandable || listState.canScrollBackward) return Offset.Zero
             settleJob?.cancel()
             val extra = (headerHeight - appBarBottomPx).toFloat()
             val dy = available.y
@@ -56,20 +55,23 @@ internal class TrackListExpansionState(
         }
 
         override suspend fun onPreFling(available: Velocity): Velocity {
-            if (expansion <= 0f || expansion >= 1f) return Velocity.Zero
+            if (!expandable || listState.canScrollBackward) return Velocity.Zero
             val target = when {
                 available.y < 0f -> 1f
                 available.y > 0f -> 0f
                 expansion > 0.5f -> 1f
                 else -> 0f
             }
-            settleJob?.cancel()
-            settleJob = scope.launch {
-                animate(expansion, target, animationSpec = tween(EXPANSION_SETTLE_MILLIS)) { value, _ ->
-                    expansion = value
+            val settle = target != expansion
+            if (settle) {
+                settleJob?.cancel()
+                settleJob = scope.launch {
+                    animate(expansion, target, animationSpec = tween(EXPANSION_SETTLE_MILLIS)) { value, _ ->
+                        expansion = value
+                    }
                 }
             }
-            return available
+            return if (settle) available else Velocity.Zero
         }
     }
 
@@ -77,6 +79,16 @@ internal class TrackListExpansionState(
         if (!expandable && expansion != 0f) {
             settleJob?.cancel()
             expansion = 0f
+        }
+    }
+
+    fun collapse() {
+        if (expansion == 0f) return
+        settleJob?.cancel()
+        settleJob = scope.launch {
+            animate(expansion, 0f, animationSpec = tween(EXPANSION_SETTLE_MILLIS)) { value, _ ->
+                expansion = value
+            }
         }
     }
 
