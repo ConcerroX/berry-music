@@ -5,13 +5,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.Colors
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import art.rippledesign.compose.rui.RTheme
 
 /**
  * App theme. When [accent] carries the currently playing cover's colors, the primary and
@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.lerp
 @Composable
 fun BerryTheme(accent: CoverColors? = null, content: @Composable () -> Unit) {
     val base = if (isSystemInDarkTheme()) darkColors() else lightColors()
-    MaterialTheme(colors = animatedColors(base, accent), content = content)
+    RTheme(colors = animatedColors(base, accent), content = content)
 }
 
 @Composable
