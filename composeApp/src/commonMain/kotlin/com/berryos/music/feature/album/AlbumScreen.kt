@@ -10,7 +10,6 @@ import com.berryos.music.core.model.album
 import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
-import com.berryos.music.core.playback.playbackStatus
 import com.berryos.music.feature.detail.MediaDetailScreen
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.album
@@ -53,7 +52,7 @@ fun AlbumScreen(
                     coverUrl = album.coverUrl,
                     tracks = tracks,
                     playbackSource = playbackSource,
-                    playbackStatus = playbackState.playbackStatus(playbackSource),
+                    playbackState = playbackState,
                     playbackPosition = playbackPosition,
                     collapseOnPause = collapseOnPause,
                     actions = actions,
