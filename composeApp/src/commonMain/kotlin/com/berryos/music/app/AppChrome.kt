@@ -67,6 +67,7 @@ import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
+import com.berryos.music.core.playback.PlaybackProgress
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.nowplaying.MiniPlayer
 import com.berryos.music.resources.Res
@@ -89,6 +90,7 @@ import com.berryos.music.resources.tab_artists
 import com.berryos.music.resources.tab_home
 import com.berryos.music.resources.tab_playlists
 import com.berryos.music.resources.tab_songs
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -103,6 +105,7 @@ internal fun AppChrome(
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
+    playbackProgress: StateFlow<PlaybackProgress>,
     authState: AuthState,
     auth: AuthController,
     settings: AppSettingsRepository,
@@ -133,6 +136,9 @@ internal fun AppChrome(
     var showCoverPalette by rememberSaveable { mutableStateOf(false) }
     val onBack = if (isRoot) null else actions.back
     val showMiniPlayer = playbackState.currentTrack != null
+    val miniCoverUrl = (libraryState as? LibraryUiState.Ready)?.snapshot?.let { snapshot ->
+        playbackState.currentTrack?.let { track -> snapshot.album(track.source, track.albumId)?.coverUrl }
+    }
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val drawerScope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -185,7 +191,9 @@ internal fun AppChrome(
                     onBack = if (isDetailRoute) null else onBack,
                     openDrawer = if (isDetailRoute) drawerAction else openDrawer,
                     showMiniPlayer = showMiniPlayer,
+                    miniCoverUrl = miniCoverUrl,
                     playbackState = playbackState,
+                    playbackProgress = playbackProgress,
                     onOpenNowPlaying = onOpenNowPlaying,
                     actions = actions,
                     railWidth = railWidth,
@@ -234,7 +242,9 @@ private fun ChromeUnderlay(
     onBack: (() -> Unit)?,
     openDrawer: (() -> Unit)?,
     showMiniPlayer: Boolean,
+    miniCoverUrl: String?,
     playbackState: PlaybackState,
+    playbackProgress: StateFlow<PlaybackProgress>,
     onOpenNowPlaying: () -> Unit,
     actions: AppActions,
     railWidth: Dp,
@@ -286,7 +296,14 @@ private fun ChromeUnderlay(
         ) {
             if (showMiniPlayer) {
                 Box(Modifier.onSizeChanged(onMiniPlayerSize)) {
-                    MiniPlayer(playbackState, onOpenNowPlaying, actions.togglePlayPause, actions.next)
+                    MiniPlayer(
+                        playbackState,
+                        miniCoverUrl,
+                        playbackProgress,
+                        onOpenNowPlaying,
+                        actions.togglePlayPause,
+                        actions.next,
+                    )
                 }
             }
             if (compact && (isRoot || isDetailRoute)) {

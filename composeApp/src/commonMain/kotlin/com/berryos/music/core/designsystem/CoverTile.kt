@@ -20,7 +20,7 @@ fun CoverTile(coverUrl: String?, title: String, text: String, modifier: Modifier
     val coverColors = rememberAlbumCoverColors(coverUrl)
     RTile(
         media = {
-            AlbumCover(coverUrl, coverColors::onImage)
+            AlbumCover(coverUrl, onImage = coverColors::onImage)
         },
         modifier = modifier,
         backgroundColor = coverColors.colors?.background ?: Color.Transparent,

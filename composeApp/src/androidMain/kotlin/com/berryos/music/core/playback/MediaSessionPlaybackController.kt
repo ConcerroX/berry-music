@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -15,9 +16,17 @@ import androidx.media3.session.SessionToken
 import com.berryos.music.core.model.SourceKey
 import com.berryos.music.core.model.Track
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class MediaSessionPlaybackController(context: Context) : PlaybackController {
     private val appContext = context.applicationContext
@@ -32,16 +41,31 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
     private var tracks: List<Track> = emptyList()
     private var source: PlaybackSource = PlaybackSource.Queue
     private var pendingPlay: PendingPlay? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var progressJob: Job? = null
     private val _state = MutableStateFlow(PlaybackState())
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
+    private val _progress = MutableStateFlow(PlaybackProgress())
+    override val progress: StateFlow<PlaybackProgress> = _progress.asStateFlow()
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updateState()
+            updateProgress()
+            syncProgressUpdates()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateState()
+            updateProgress()
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            updateProgress()
         }
     }
 
@@ -54,6 +78,8 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
                 pendingPlay?.let { play(it.tracks, it.startIndex, it.source) }
                 pendingPlay = null
                 updateState()
+                updateProgress()
+                syncProgressUpdates()
             },
             ContextCompat.getMainExecutor(appContext),
         )
@@ -91,6 +117,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         mediaController.prepare()
         mediaController.play()
         updateState()
+        updateProgress()
     }
 
     override fun togglePlayPause() {
@@ -109,6 +136,8 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
     }
 
     fun release() {
+        progressJob?.cancel()
+        scope.cancel()
         controller?.removeListener(listener)
         MediaController.releaseFuture(controllerFuture)
         controller = null
@@ -122,6 +151,36 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
             isPlaying = mediaController.isPlaying,
             source = source,
         )
+    }
+
+    private fun updateProgress() {
+        val mediaController = controller ?: return
+        val duration = mediaController.duration
+            .takeIf { it != C.TIME_UNSET && it > 0L }
+            ?: tracks.getOrNull(mediaController.currentMediaItemIndex)?.durationMs
+            ?: 0L
+        _progress.value = PlaybackProgress(
+            positionMs = mediaController.currentPosition.coerceAtLeast(0L),
+            durationMs = duration,
+        )
+    }
+
+    /** Media3 has no position callback, so the progress is sampled while playback runs. */
+    private fun syncProgressUpdates() {
+        val mediaController = controller ?: return
+        if (mediaController.isPlaying) {
+            if (progressJob == null) {
+                progressJob = scope.launch {
+                    while (isActive) {
+                        updateProgress()
+                        delay(PROGRESS_INTERVAL_MILLIS)
+                    }
+                }
+            }
+        } else {
+            progressJob?.cancel()
+            progressJob = null
+        }
     }
 
     private fun localUri(track: Track): Uri {
@@ -138,6 +197,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
 
     companion object {
         private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
+        private const val PROGRESS_INTERVAL_MILLIS = 500L
     }
 
     private data class PendingPlay(val tracks: List<Track>, val startIndex: Int, val source: PlaybackSource)

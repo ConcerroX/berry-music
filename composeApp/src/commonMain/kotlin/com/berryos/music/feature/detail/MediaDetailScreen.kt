@@ -102,7 +102,7 @@ fun MediaDetailScreen(
 @Composable
 private fun MediaImageHeader(coverUrl: String?, onImage: (Image?) -> Unit) {
     Box {
-        AlbumCover(coverUrl, onImage)
+        AlbumCover(coverUrl, onImage = onImage)
         MediaImageScrim()
     }
 }

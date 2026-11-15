@@ -17,7 +17,7 @@ import com.berryos.music.resources.default_album_art
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun AlbumCover(coverUrl: String?, onImage: (Image?) -> Unit = {}) {
+fun AlbumCover(coverUrl: String?, modifier: Modifier = Modifier, onImage: (Image?) -> Unit = {}) {
     val fallback = painterResource(Res.drawable.default_album_art)
     var failed by remember(coverUrl) { mutableStateOf(false) }
     if (coverUrl == null || failed) {
@@ -25,7 +25,7 @@ fun AlbumCover(coverUrl: String?, onImage: (Image?) -> Unit = {}) {
             painter = fallback,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            modifier = modifier.fillMaxWidth().aspectRatio(1f),
         )
     } else {
         AsyncImage(
@@ -36,7 +36,7 @@ fun AlbumCover(coverUrl: String?, onImage: (Image?) -> Unit = {}) {
             error = fallback,
             onSuccess = { onImage(it.result.image) },
             onError = { if (!failed) failed = true },
-            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            modifier = modifier.fillMaxWidth().aspectRatio(1f),
         )
     }
 }

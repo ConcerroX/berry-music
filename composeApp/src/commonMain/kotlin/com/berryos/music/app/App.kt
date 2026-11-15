@@ -188,6 +188,7 @@ internal fun AppShell(
             actions,
             libraryState,
             playbackState,
+            playback.progress,
             authState,
             auth,
             settings,

@@ -38,8 +38,12 @@ fun PlaybackState.playbackStatus(source: PlaybackSource): PlaybackStatus = when 
     else -> PlaybackStatus.Paused
 }
 
+/** Playhead position, sampled separately so the high-frequency updates stay out of [PlaybackState]. */
+data class PlaybackProgress(val positionMs: Long = 0L, val durationMs: Long = 0L)
+
 interface PlaybackController {
     val state: StateFlow<PlaybackState>
+    val progress: StateFlow<PlaybackProgress>
 
     fun play(tracks: List<Track>, startIndex: Int, source: PlaybackSource = PlaybackSource.Queue)
     fun togglePlayPause()
