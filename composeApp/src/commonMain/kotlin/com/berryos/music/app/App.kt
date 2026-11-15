@@ -770,10 +770,20 @@ private fun AppNavDisplay(
             entry<AlbumRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetAlbum),
             ) { route ->
+                val coverUrl = (libraryState as? LibraryUiState.Ready)
+                    ?.snapshot
+                    ?.album(route.source, route.albumId)
+                    ?.coverUrl
+                val defaultColors = rememberDefaultCoverColors()
+                // Frozen per entry: a palette that arrives after the tap must not change the
+                // surface color mid-animation.
+                val containerColor = remember(route) {
+                    cachedCoverColorsOrNull(coverUrl) ?: defaultColors?.background
+                }
                 RContainerTransformNavEntry(
                     key = albumTransformKey(route.source, route.albumId),
                     controller = controller,
-                    spec = ContainerTransformSpec,
+                    spec = ContainerTransformSpec.withContainerColor(containerColor),
                 ) {
                     AlbumScreen(
                         route.source,
@@ -789,10 +799,20 @@ private fun AppNavDisplay(
             entry<ArtistRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetArtist),
             ) { route ->
+                val coverUrl = (libraryState as? LibraryUiState.Ready)
+                    ?.snapshot
+                    ?.artist(route.source, route.artistId)
+                    ?.coverUrl
+                val defaultColors = rememberDefaultCoverColors()
+                // Frozen per entry: a palette that arrives after the tap must not change the
+                // surface color mid-animation.
+                val containerColor = remember(route) {
+                    cachedCoverColorsOrNull(coverUrl) ?: defaultColors?.background
+                }
                 RContainerTransformNavEntry(
                     key = artistTransformKey(route.source, route.artistId),
                     controller = controller,
-                    spec = ContainerTransformSpec,
+                    spec = ContainerTransformSpec.withContainerColor(containerColor),
                 ) {
                     ArtistScreen(
                         route.source,

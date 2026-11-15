@@ -6,9 +6,16 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.container.rContainerTransformSource
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
@@ -39,6 +46,7 @@ internal fun ArtistsScreen(
     transform: RContainerTransformNavController<ContainerTransformKey>,
 ) {
     val scope = rememberCoroutineScope()
+    var viewportBounds by remember { mutableStateOf<Rect?>(null) }
     // Keeps this grid composed while the transform draws it; Nav3 would otherwise drop it as soon
     // as its own scene transition settles.
     rememberRContainerTransformHold(
@@ -63,7 +71,9 @@ internal fun ArtistsScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onGloballyPositioned { viewportBounds = it.boundsInWindow() },
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -79,6 +89,8 @@ internal fun ArtistsScreen(
                                 // Read in the draw phase so the tile can reappear in the same frame
                                 // the transform entry is disposed.
                                 hidden = { transform.hiddenKey == key },
+                                // Items scrolled half out of the grid start from their visible part.
+                                clipBounds = { viewportBounds },
                             ),
                         ) {
                             if (transform.activeKey == null) {
