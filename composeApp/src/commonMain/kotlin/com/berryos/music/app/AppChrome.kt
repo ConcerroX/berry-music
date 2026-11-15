@@ -2,6 +2,12 @@
 
 package com.berryos.music.app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -68,6 +74,7 @@ import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackPosition
+import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.nowplaying.MiniPlayer
 import com.berryos.music.resources.Res
@@ -136,6 +143,13 @@ internal fun AppChrome(
     var showCoverPalette by rememberSaveable { mutableStateOf(false) }
     val onBack = if (isRoot) null else actions.back
     val showMiniPlayer = playbackState.currentTrack != null
+    val detailSessionInactive = when (route) {
+        is AlbumRoute -> playbackState.source != PlaybackSource.Album(route.albumId)
+        is ArtistRoute -> playbackState.source != PlaybackSource.Artist(route.artistId)
+        else -> false
+    }
+    // A detail page that is no longer the active session still shows the playing item.
+    val showDetailMiniPlayer = isDetailRoute && showMiniPlayer && detailSessionInactive
     val miniCoverUrl = (libraryState as? LibraryUiState.Ready)?.snapshot?.let { snapshot ->
         playbackState.currentTrack?.let { track -> snapshot.album(track.source, track.albumId)?.coverUrl }
     }
@@ -190,7 +204,7 @@ internal fun AppChrome(
                     title = if (isDetailRoute) routeTitle(selectedTab.backStack.firstOrNull()) else title,
                     onBack = if (isDetailRoute) null else onBack,
                     openDrawer = if (isDetailRoute) drawerAction else openDrawer,
-                    showMiniPlayer = showMiniPlayer,
+                    showMiniPlayer = showMiniPlayer && !isDetailRoute,
                     miniCoverUrl = miniCoverUrl,
                     playbackState = playbackState,
                     playbackPosition = playbackPosition,
@@ -221,6 +235,39 @@ internal fun AppChrome(
                     onCoverPalette = { showCoverPalette = true },
                     modifier = Modifier.fillMaxSize(),
                 )
+                AnimatedVisibility(
+                    visible = showDetailMiniPlayer,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    enter = slideInVertically(
+                        animationSpec = tween(
+                            DETAIL_MINI_PLAYER_ENTER_MILLIS,
+                            easing = LinearOutSlowInEasing,
+                        ),
+                        initialOffsetY = { height -> height },
+                    ),
+                    exit = slideOutVertically(
+                        animationSpec = tween(
+                            DETAIL_MINI_PLAYER_EXIT_MILLIS,
+                            easing = FastOutLinearInEasing,
+                        ),
+                        targetOffsetY = { height -> height },
+                    ),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = if (!compact) railWidth else 0.dp),
+                    ) {
+                        MiniPlayer(
+                            playbackState,
+                            miniCoverUrl,
+                            playbackPosition,
+                            onOpenNowPlaying,
+                            actions.togglePlayPause,
+                            actions.next,
+                        )
+                    }
+                }
             }
         }
         if (showCoverPalette) {
@@ -362,3 +409,6 @@ private fun routeTitle(route: NavKey?): String {
     }
     return stringResource(resource ?: Res.string.app_name)
 }
+
+private const val DETAIL_MINI_PLAYER_ENTER_MILLIS = 250
+private const val DETAIL_MINI_PLAYER_EXIT_MILLIS = 200
