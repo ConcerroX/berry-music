@@ -31,7 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -62,7 +61,6 @@ import com.berryos.music.app.navigation.SongsRoute
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.CoverPaletteDialog
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
@@ -198,17 +196,7 @@ internal fun AppChrome(
                     onSelectTab = onSelectTab,
                 )
                 if (isDetailRoute) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        awaitPointerEvent().changes.forEach { it.consume() }
-                                    }
-                                }
-                            },
-                    )
+                    Box(modifier = Modifier.fillMaxSize().consumeAllPointerInput())
                 }
                 TabContent(
                     tabs = tabs,
@@ -226,7 +214,11 @@ internal fun AppChrome(
                 )
             }
         }
-        CoverPaletteHost(showCoverPalette, detailColors) { showCoverPalette = false }
+        if (showCoverPalette) {
+            detailColors?.let { paletteColors ->
+                CoverPaletteDialog(paletteColors.swatches, onDismiss = { showCoverPalette = false })
+            }
+        }
     }
 }
 
@@ -322,13 +314,6 @@ private fun TabIcon(tab: TabItem, selected: Boolean) {
         painter = painterResource(if (selected) tab.filledIcon else tab.outlinedIcon),
         contentDescription = stringResource(tab.label),
     )
-}
-
-@Composable
-private fun CoverPaletteHost(visible: Boolean, colors: CoverColors?, onDismiss: () -> Unit) {
-    if (visible) {
-        colors?.let { CoverPaletteDialog(it.swatches, onDismiss = onDismiss) }
-    }
 }
 
 private val staticRouteTitles: Map<NavKey, StringResource> = mapOf(
