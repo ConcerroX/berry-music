@@ -39,6 +39,8 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
 
     private var controller: MediaController? = null
     private var tracks: List<Track> = emptyList()
+    private var entryIds: List<Long> = emptyList()
+    private var nextEntryId = 0L
     private var source: PlaybackSource = PlaybackSource.Queue
     private var pendingPlay: PendingPlay? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -94,30 +96,33 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         val playable = tracks.filter { it.source == SourceKey.Local || it.streamUrl != null }
         if (playable.isEmpty()) return
         this.tracks = playable
+        this.entryIds = playable.map { nextEntryId++ }
         this.source = source
-        val items = playable.map { track ->
-            MediaItem.Builder()
-                .setMediaId("${track.source}:${track.id}")
-                .setUri(track.streamUrl?.let(Uri::parse) ?: localUri(track))
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(track.title)
-                        .setArtist(track.artist)
-                        .setAlbumTitle(track.album)
-                        .setDurationMs(track.durationMs)
-                        .setArtworkUri(
-                            if (track.source == SourceKey.Local) albumArtUri(track.albumId) else null,
-                        )
-                        .build(),
-                )
-                .build()
-        }
+        val items = playable.map(::playbackMediaItem)
         val index = startIndex.coerceIn(0, items.lastIndex)
         mediaController.setMediaItems(items, index, 0L)
         mediaController.prepare()
         mediaController.play()
         updateState()
         updatePosition()
+    }
+
+    override fun playNext(track: Track) {
+        val mediaController = controller ?: return
+        if (track.source == SourceKey.Local || track.streamUrl != null) {
+            val currentIndex = mediaController.currentMediaItemIndex
+            if (tracks.isEmpty() || currentIndex !in tracks.indices) {
+                play(listOf(track), 0, PlaybackSource.Queue)
+            } else {
+                val insertIndex = (currentIndex + 1).coerceAtMost(tracks.size)
+                tracks = tracks.toMutableList().apply { add(insertIndex, track) }
+                entryIds = entryIds.toMutableList().apply { add(insertIndex, nextEntryId++) }
+                source = PlaybackSource.Queue
+                mediaController.addMediaItem(insertIndex, playbackMediaItem(track))
+                updateState()
+                updatePosition()
+            }
+        }
     }
 
     override fun togglePlayPause() {
@@ -152,6 +157,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         val mediaController = controller ?: return
         _state.value = PlaybackState(
             queue = tracks,
+            entryIds = entryIds,
             currentIndex = mediaController.currentMediaItemIndex,
             // The intent, not the transient isPlaying flag: buffering after a seek would
             // otherwise flip the icon and the header back to the paused state.
@@ -190,22 +196,38 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         }
     }
 
-    private fun localUri(track: Track): Uri {
-        val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        } else {
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        }
-        return ContentUris.withAppendedId(base, track.id.toLong())
-    }
-
-    private fun albumArtUri(albumId: String): Uri =
-        ContentUris.withAppendedId(Uri.parse(ALBUM_ART_URI), albumId.toLong())
-
     companion object {
-        private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
         private const val POSITION_INTERVAL_MILLIS = 500L
     }
 
     private data class PendingPlay(val tracks: List<Track>, val startIndex: Int, val source: PlaybackSource)
 }
+
+private fun playbackMediaItem(track: Track): MediaItem = MediaItem.Builder()
+    .setMediaId("${track.source}:${track.id}")
+    .setUri(track.streamUrl?.let(Uri::parse) ?: localUri(track))
+    .setMediaMetadata(
+        MediaMetadata.Builder()
+            .setTitle(track.title)
+            .setArtist(track.artist)
+            .setAlbumTitle(track.album)
+            .setDurationMs(track.durationMs)
+            .setArtworkUri(
+                if (track.source == SourceKey.Local) albumArtUri(track.albumId) else null,
+            )
+            .build(),
+    )
+    .build()
+
+private fun localUri(track: Track): Uri {
+    val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+    } else {
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+    }
+    return ContentUris.withAppendedId(base, track.id.toLong())
+}
+
+private fun albumArtUri(albumId: String): Uri = ContentUris.withAppendedId(Uri.parse(ALBUM_ART_URI), albumId.toLong())
+
+private const val ALBUM_ART_URI = "content://media/external/audio/albumart"

@@ -14,15 +14,16 @@ internal sealed interface NowPlayingTarget {
     data class Album(val source: SourceKey, val albumId: String) : NowPlayingTarget
     data class Artist(val source: SourceKey, val artistId: String) : NowPlayingTarget
     data class Playlist(val playlistId: String) : NowPlayingTarget
+    data object Queue : NowPlayingTarget
 }
 
 internal fun resolveNowPlayingTarget(state: LibraryUiState, playbackState: PlaybackState): NowPlayingTarget? {
+    val track = playbackState.currentTrack ?: return null
     val snapshot = (state as? LibraryUiState.Ready)?.snapshot
-    val track = playbackState.currentTrack
-    return if (snapshot == null || track == null) {
-        null
+    return if (playbackState.source is PlaybackSource.Queue) {
+        NowPlayingTarget.Queue
     } else {
-        resolveTarget(snapshot, track, playbackState.source)
+        snapshot?.let { resolveTarget(it, track, playbackState.source) }
     }
 }
 
@@ -37,7 +38,9 @@ private fun resolveTarget(snapshot: LibrarySnapshot, track: Track, source: Playb
         is PlaybackSource.Playlist ->
             NowPlayingTarget.Playlist(source.playlistId)
 
-        PlaybackSource.Queue, PlaybackSource.Songs, PlaybackSource.Search ->
+        PlaybackSource.Queue -> NowPlayingTarget.Queue
+
+        PlaybackSource.Songs, PlaybackSource.Search ->
             albumTarget(snapshot, track, track.albumId)
     }
 

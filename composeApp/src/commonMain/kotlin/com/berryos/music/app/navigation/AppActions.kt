@@ -7,6 +7,7 @@ class AppActions(
     val open: (AppRoute) -> Unit,
     val back: () -> Unit,
     val play: (List<Track>, Int, PlaybackSource) -> Unit,
+    val playNext: (Track) -> Unit,
     val togglePlayPause: () -> Unit,
     val next: () -> Unit,
     val previous: () -> Unit,

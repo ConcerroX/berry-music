@@ -15,6 +15,8 @@ sealed interface PlaybackSource {
 
 data class PlaybackState(
     val queue: List<Track> = emptyList(),
+    /** Unique per queue entry, so a track added twice still has two distinct list identities. */
+    val entryIds: List<Long> = emptyList(),
     val currentIndex: Int = -1,
     val isPlayRequested: Boolean = false,
     val source: PlaybackSource = PlaybackSource.Queue,
@@ -49,6 +51,7 @@ interface PlaybackController {
     val position: StateFlow<PlaybackPosition>
 
     fun play(tracks: List<Track>, startIndex: Int, source: PlaybackSource = PlaybackSource.Queue)
+    fun playNext(track: Track)
     fun togglePlayPause()
     fun next()
     fun previous()

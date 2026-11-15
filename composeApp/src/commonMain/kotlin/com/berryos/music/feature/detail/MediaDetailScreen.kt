@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package com.berryos.music.feature.detail
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -24,6 +26,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.Card
 import androidx.compose.material.Divider
+import androidx.compose.material.DropdownMenu
+import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -32,8 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -67,6 +73,7 @@ import com.berryos.music.resources.Res
 import com.berryos.music.resources.ic_more_vert
 import com.berryos.music.resources.ic_volume_up
 import com.berryos.music.resources.more_options
+import com.berryos.music.resources.play_next
 import com.berryos.music.resources.track_summary
 import com.berryos.music.resources.up_next_duration
 import com.berryos.music.resources.volume_up
@@ -87,6 +94,7 @@ fun MediaDetailScreen(
     playbackPosition: StateFlow<PlaybackPosition>,
     collapseOnPause: Boolean,
     actions: AppActions,
+    entryIds: List<Long>? = null,
     topBar: @Composable (Color?) -> Unit = {},
 ) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
@@ -135,6 +143,7 @@ fun MediaDetailScreen(
                     currentTrack = currentTrack,
                     playbackSource = playbackSource,
                     actions = actions,
+                    entryIds = entryIds,
                     modifier = Modifier
                         .fillMaxWidth()
                         .onGloballyPositioned { expansionState.cardHeight = it.size.height },
@@ -224,6 +233,7 @@ private fun TrackListCard(
     currentTrack: Track?,
     playbackSource: PlaybackSource,
     actions: AppActions,
+    entryIds: List<Long>?,
     modifier: Modifier = Modifier,
 ) {
     val showCurrentTrack = playbackStatus != PlaybackStatus.NotPlaying && currentTrack != null
@@ -252,15 +262,20 @@ private fun TrackListCard(
                             track = currentTrack,
                             showAlbum = playbackSource !is PlaybackSource.Album,
                             totalDurationMs = tracks.sumOf { it.durationMs },
+                            onPlayNext = actions.playNext,
                         )
                     }
                 }
-                itemsIndexed(tracks, key = { _, track -> trackKey(track) }) { index, track ->
+                itemsIndexed(
+                    tracks,
+                    key = { index, track -> entryIds?.getOrNull(index) ?: trackKey(track) },
+                ) { index, track ->
                     Column {
                         TrackRow(
                             track = track,
                             showAlbum = playbackSource !is PlaybackSource.Album,
                             onClick = { actions.play(tracks, index, playbackSource) },
+                            onPlayNext = actions.playNext,
                         )
                         if (index < tracks.lastIndex) {
                             Divider(modifier = Modifier.padding(start = TRACK_DIVIDER_INSET))
@@ -273,9 +288,15 @@ private fun TrackListCard(
 }
 
 @Composable
-private fun CurrentTrackSection(track: Track, showAlbum: Boolean, totalDurationMs: Long) {
+private fun CurrentTrackSection(track: Track, showAlbum: Boolean, totalDurationMs: Long, onPlayNext: (Track) -> Unit) {
     Column {
-        TrackRow(track = track, showAlbum = showAlbum, showVolumeIcon = true, onClick = null)
+        TrackRow(
+            track = track,
+            showAlbum = showAlbum,
+            showVolumeIcon = true,
+            onClick = null,
+            onPlayNext = onPlayNext,
+        )
         Divider(modifier = Modifier.padding(top = CURRENT_TRACK_DIVIDER_TOP_PADDING))
         Box(
             modifier = Modifier
@@ -334,7 +355,13 @@ private fun BoxScope.MediaImageScrim() {
 }
 
 @Composable
-private fun TrackRow(track: Track, showAlbum: Boolean, onClick: (() -> Unit)?, showVolumeIcon: Boolean = false) {
+private fun TrackRow(
+    track: Track,
+    showAlbum: Boolean,
+    onClick: (() -> Unit)?,
+    onPlayNext: (Track) -> Unit,
+    showVolumeIcon: Boolean = false,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -374,13 +401,31 @@ private fun TrackRow(track: Track, showAlbum: Boolean, onClick: (() -> Unit)?, s
                 .weight(1f)
                 .fillMaxHeight(),
         )
+        TrackRowMenu(track, onPlayNext)
+    }
+}
+
+@Composable
+private fun TrackRowMenu(track: Track, onPlayNext: (Track) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
         // A 48dp IconButton centers its 24dp icon, so 4dp puts the icon 16dp from the edge.
-        IconButton(onClick = {}, modifier = Modifier.padding(end = 4.dp)) {
+        IconButton(onClick = { expanded = true }, modifier = Modifier.padding(end = 4.dp)) {
             Icon(
                 painter = painterResource(Res.drawable.ic_more_vert),
                 contentDescription = stringResource(Res.string.more_options),
                 tint = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
             )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                onClick = {
+                    expanded = false
+                    onPlayNext(track)
+                },
+            ) {
+                Text(stringResource(Res.string.play_next))
+            }
         }
     }
 }

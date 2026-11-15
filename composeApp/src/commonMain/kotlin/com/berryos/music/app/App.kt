@@ -7,6 +7,7 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Surface
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -38,9 +39,11 @@ import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
 import com.berryos.music.core.model.album
 import com.berryos.music.core.playback.PlaybackController
+import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.artist.ArtistScreen
+import com.berryos.music.feature.detail.MediaDetailScreen
 import com.berryos.music.feature.playlist.PlaylistScreen
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.collapse
@@ -55,14 +58,17 @@ import com.berryos.music.resources.ic_outlined_home
 import com.berryos.music.resources.ic_outlined_music_note
 import com.berryos.music.resources.ic_outlined_people
 import com.berryos.music.resources.ic_outlined_queue_music
+import com.berryos.music.resources.queue
 import com.berryos.music.resources.tab_albums
 import com.berryos.music.resources.tab_artists
 import com.berryos.music.resources.tab_home
 import com.berryos.music.resources.tab_playlists
 import com.berryos.music.resources.tab_songs
+import com.berryos.music.resources.track_count
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -138,6 +144,7 @@ internal fun AppShell(
             }
         },
         play = playback::play,
+        playNext = playback::playNext,
         togglePlayPause = playback::togglePlayPause,
         next = playback::next,
         previous = playback::previous,
@@ -153,6 +160,16 @@ internal fun AppShell(
     val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
     val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
         playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
+    // Starting a queue session from the player (Play next) leaves this page out of the session,
+    // so the sheet steps aside and the mini player takes over.
+    LaunchedEffect(playbackState.source) {
+        if (playbackState.source is PlaybackSource.Queue && sheetVisible) {
+            playbackSheetState.hide()
+        }
+    }
+    val queueCoverUrl = playbackState.currentTrack?.let { track ->
+        (libraryState as? LibraryUiState.Ready)?.snapshot?.album(track.source, track.albumId)?.coverUrl
+    }
     val sheetTopBar: @Composable (Color?) -> Unit = { contentColor ->
         AppTopBar(
             title = null,
@@ -198,6 +215,21 @@ internal fun AppShell(
                             )
 
                         is NowPlayingTarget.Playlist -> PlaylistScreen(target.playlistId)
+
+                        NowPlayingTarget.Queue ->
+                            MediaDetailScreen(
+                                title = stringResource(Res.string.queue),
+                                subtitle = stringResource(Res.string.track_count, playbackState.queue.size),
+                                coverUrl = queueCoverUrl,
+                                tracks = playbackState.queue,
+                                playbackSource = PlaybackSource.Queue,
+                                playbackState = playbackState,
+                                playbackPosition = playback.position,
+                                collapseOnPause = collapseOnPause,
+                                actions = actions,
+                                entryIds = playbackState.entryIds,
+                                topBar = sheetTopBar,
+                            )
 
                         null -> Unit
                     }
