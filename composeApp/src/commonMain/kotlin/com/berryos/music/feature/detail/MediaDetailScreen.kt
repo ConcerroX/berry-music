@@ -244,7 +244,7 @@ private fun TrackListCard(
                     .padding(vertical = CARD_VERTICAL_PADDING),
             ) {
                 if (showCurrentTrack && currentTrack != null) {
-                    item {
+                    item(key = CURRENT_TRACK_ITEM_KEY) {
                         CurrentTrackSection(
                             track = currentTrack,
                             showAlbum = playbackSource !is PlaybackSource.Album,
@@ -252,7 +252,7 @@ private fun TrackListCard(
                         )
                     }
                 }
-                itemsIndexed(tracks) { index, track ->
+                itemsIndexed(tracks, key = { _, track -> trackKey(track) }) { index, track ->
                     Column {
                         TrackRow(
                             track = track,
@@ -414,6 +414,10 @@ private fun TrackTexts(title: String, subtitle: String, modifier: Modifier = Mod
         }
     }
 }
+
+private fun trackKey(track: Track): String = "${track.source}:${track.id}"
+
+private const val CURRENT_TRACK_ITEM_KEY = "current-track"
 
 private val APP_BAR_HEIGHT = 56.dp
 private val CARD_VERTICAL_PADDING = 8.dp
