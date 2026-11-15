@@ -716,7 +716,7 @@ private fun TabContent(
     }
 }
 
-@Suppress("LongMethod")
+@Suppress("LongMethod", "CyclomaticComplexMethod")
 @Composable
 private fun AppNavDisplay(
     backStack: NavBackStack<NavKey>,
@@ -836,7 +836,13 @@ private fun AppNavDisplay(
         onBackCancelled = controller::notifyGestureCancelled,
         onBackCompleted = actions.back,
     )
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.then(
+            // Both scenes are composed while the transform runs; keep assistive technology on a
+            // stable, empty tree instead of the intermediate state.
+            if (controller.transitionRunning) Modifier.clearAndSetSemantics { } else Modifier,
+        ),
+    ) {
         CompositionLocalProvider(LocalRContainerTransformNavigationEventState provides navigationEventState) {
             // Container transform pairs get a duration-only scene transition: the transform draws
             // the visuals, while the transition keeps both scenes composed for its length.
