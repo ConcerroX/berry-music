@@ -95,6 +95,7 @@ fun MediaDetailScreen(
     collapseOnPause: Boolean,
     actions: AppActions,
     entryIds: List<Long>? = null,
+    bottomInset: Dp = 0.dp,
     topBar: @Composable (Color?) -> Unit = {},
 ) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
@@ -113,6 +114,7 @@ fun MediaDetailScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(pageBackground)
+            .padding(bottom = bottomInset)
             .onSizeChanged { expansionState.containerHeight = it.height }
             .nestedScroll(expansionState.connection),
     ) {

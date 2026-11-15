@@ -1,6 +1,7 @@
 package com.berryos.music.feature.songs
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -9,6 +10,7 @@ import androidx.compose.material.ListItem
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
@@ -24,7 +26,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun SongsScreen(state: LibraryUiState, actions: AppActions) {
+fun SongsScreen(state: LibraryUiState, actions: AppActions, bottomContentPadding: Dp) {
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
@@ -41,7 +43,10 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions) {
                     message = stringResource(Res.string.no_music_message),
                 )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = bottomContentPadding),
+                ) {
                     itemsIndexed(tracks) { index, track ->
                         ListItem(
                             modifier = Modifier.clickable { actions.play(tracks, index, PlaybackSource.Songs) },

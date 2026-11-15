@@ -2,6 +2,8 @@ package com.berryos.music.feature.album
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.library.LibraryUiState
@@ -27,6 +29,7 @@ fun AlbumScreen(
     playbackState: PlaybackState,
     playbackPosition: StateFlow<PlaybackPosition>,
     collapseOnPause: Boolean,
+    bottomInset: Dp = 0.dp,
     topBar: @Composable (Color?) -> Unit = {},
 ) {
     when (state) {
@@ -56,6 +59,7 @@ fun AlbumScreen(
                     playbackPosition = playbackPosition,
                     collapseOnPause = collapseOnPause,
                     actions = actions,
+                    bottomInset = bottomInset,
                     topBar = topBar,
                 )
             }

@@ -5,10 +5,12 @@ package com.berryos.music.app
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,6 +39,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -148,8 +155,49 @@ internal fun AppChrome(
         is ArtistRoute -> playbackState.source != PlaybackSource.Artist(route.artistId)
         else -> false
     }
-    // A detail page that is no longer the active session still shows the playing item.
-    val showDetailMiniPlayer = isDetailRoute && showMiniPlayer && detailSessionInactive
+    // On a detail page whose album/artist is not the active session, only the bar steps aside;
+    // the same mini player stays and slides down into its place at the bottom.
+    val barHandsOffToMiniPlayer = isDetailRoute && detailSessionInactive
+    var bottomBarHidden by remember { mutableStateOf(false) }
+    val barShouldHide = bottomBarHidden || !isRoot
+    val bottomBarOffset by animateFloatAsState(
+        targetValue = if (barShouldHide) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (barShouldHide) CHROME_HIDE_MILLIS else CHROME_SHOW_MILLIS,
+            easing = if (barShouldHide) FastOutLinearInEasing else LinearOutSlowInEasing,
+        ),
+        label = "bottomBarOffset",
+    )
+    val thresholdPx = with(LocalDensity.current) { BOTTOM_BAR_SCROLL_THRESHOLD.toPx() }
+    val hideOnScroll = remember(thresholdPx) {
+        object : NestedScrollConnection {
+            private var accumulated = 0f
+
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (consumed.y == 0f) return Offset.Zero
+                // Debounce: require a sustained same-direction drag before toggling, and drop the
+                // accumulation as soon as the direction reverses.
+                accumulated = if (accumulated * consumed.y < 0f) consumed.y else accumulated + consumed.y
+                if (accumulated < -thresholdPx) {
+                    bottomBarHidden = true
+                    accumulated = 0f
+                } else if (accumulated > thresholdPx) {
+                    bottomBarHidden = false
+                    accumulated = 0f
+                }
+                return Offset.Zero
+            }
+        }
+    }
+    val chromeStaysVisible = isRoot || barHandsOffToMiniPlayer
+    val rootChromeOffset by animateFloatAsState(
+        targetValue = if (chromeStaysVisible) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = if (chromeStaysVisible) CHROME_SHOW_MILLIS else CHROME_HIDE_MILLIS,
+            easing = if (chromeStaysVisible) LinearOutSlowInEasing else FastOutLinearInEasing,
+        ),
+        label = "rootChromeOffset",
+    )
     val miniCoverUrl = (libraryState as? LibraryUiState.Ready)?.snapshot?.let { snapshot ->
         playbackState.currentTrack?.let { track -> snapshot.album(track.source, track.albumId)?.coverUrl }
     }
@@ -174,6 +222,9 @@ internal fun AppChrome(
     )
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
+        // Only the mini player permanently occupies the bottom; the bar is allowed to cover the
+        // end of the list, exactly like MDC, because scrolling down hides it.
+        val rootBottomInset = if (showMiniPlayer) miniPlayerHeight else 0.dp
         val drawerEnabled = isRoot && compact
         val openDrawer: (() -> Unit)? = if (drawerEnabled) {
             { drawerScope.launch { scaffoldState.drawerState.open() } }
@@ -189,7 +240,7 @@ internal fun AppChrome(
                 }
             },
         ) { _ ->
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize().nestedScroll(hideOnScroll)) {
                 val drawerAction: (() -> Unit)? = if (compact) {
                     { drawerScope.launch { scaffoldState.drawerState.open() } }
                 } else {
@@ -204,7 +255,7 @@ internal fun AppChrome(
                     title = if (isDetailRoute) routeTitle(selectedTab.backStack.firstOrNull()) else title,
                     onBack = if (isDetailRoute) null else onBack,
                     openDrawer = if (isDetailRoute) drawerAction else openDrawer,
-                    showMiniPlayer = showMiniPlayer && !isDetailRoute,
+                    showMiniPlayer = showMiniPlayer && !isRoot && !isDetailRoute,
                     miniCoverUrl = miniCoverUrl,
                     playbackState = playbackState,
                     playbackPosition = playbackPosition,
@@ -212,7 +263,6 @@ internal fun AppChrome(
                     actions = actions,
                     railWidth = railWidth,
                     onTopBarSize = { topBarHeight = with(density) { it.height.toDp() } },
-                    onBottomBarSize = { bottomBarHeight = with(density) { it.height.toDp() } },
                     onMiniPlayerSize = { miniPlayerHeight = with(density) { it.height.toDp() } },
                     onRailSize = { railWidth = with(density) { it.width.toDp() } },
                     onSelectTab = onSelectTab,
@@ -232,42 +282,28 @@ internal fun AppChrome(
                     chromeMetrics = chromeMetrics,
                     compact = compact,
                     showMiniPlayer = showMiniPlayer,
+                    bottomContentInset = rootBottomInset,
                     onCoverPalette = { showCoverPalette = true },
                     modifier = Modifier.fillMaxSize(),
                 )
-                AnimatedVisibility(
-                    visible = showDetailMiniPlayer,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                    enter = slideInVertically(
-                        animationSpec = tween(
-                            DETAIL_MINI_PLAYER_ENTER_MILLIS,
-                            easing = LinearOutSlowInEasing,
-                        ),
-                        initialOffsetY = { height -> height },
-                    ),
-                    exit = slideOutVertically(
-                        animationSpec = tween(
-                            DETAIL_MINI_PLAYER_EXIT_MILLIS,
-                            easing = FastOutLinearInEasing,
-                        ),
-                        targetOffsetY = { height -> height },
-                    ),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = if (!compact) railWidth else 0.dp),
-                    ) {
-                        MiniPlayer(
-                            playbackState,
-                            miniCoverUrl,
-                            playbackPosition,
-                            onOpenNowPlaying,
-                            actions.togglePlayPause,
-                            actions.next,
-                        )
-                    }
-                }
+                RootBottomChrome(
+                    compact = compact,
+                    railWidth = railWidth,
+                    showMiniPlayer = showMiniPlayer,
+                    miniCoverUrl = miniCoverUrl,
+                    playbackState = playbackState,
+                    playbackPosition = playbackPosition,
+                    onOpenNowPlaying = onOpenNowPlaying,
+                    actions = actions,
+                    tabs = tabs,
+                    selectedTabIndex = selectedTabIndex,
+                    bottomBarOffset = bottomBarOffset,
+                    bottomBarHeight = bottomBarHeight,
+                    chromeOffset = rootChromeOffset,
+                    onMiniPlayerSize = { miniPlayerHeight = with(density) { it.height.toDp() } },
+                    onBottomBarSize = { bottomBarHeight = with(density) { it.height.toDp() } },
+                    onSelectTab = onSelectTab,
+                )
             }
         }
         if (showCoverPalette) {
@@ -297,7 +333,6 @@ private fun ChromeUnderlay(
     actions: AppActions,
     railWidth: Dp,
     onTopBarSize: (IntSize) -> Unit,
-    onBottomBarSize: (IntSize) -> Unit,
     onMiniPlayerSize: (IntSize) -> Unit,
     onRailSize: (IntSize) -> Unit,
     onSelectTab: (Int) -> Unit,
@@ -354,18 +389,81 @@ private fun ChromeUnderlay(
                     )
                 }
             }
-            if (compact && (isRoot || isDetailRoute)) {
-                Box(Modifier.onSizeChanged(onBottomBarSize)) {
-                    RBottomNavigation(itemCount = tabs.size) {
-                        tabs.forEachIndexed { index, tab ->
-                            RBottomNavigationItem(
-                                selected = index == selectedTabIndex,
-                                onClick = { if (isRoot) onSelectTab(index) },
-                                enabled = isRoot,
-                                icon = { TabIcon(tab, index == selectedTabIndex) },
-                                label = { Text(stringResource(tab.label)) },
-                            )
-                        }
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.RootBottomChrome(
+    compact: Boolean,
+    railWidth: Dp,
+    showMiniPlayer: Boolean,
+    miniCoverUrl: String?,
+    playbackState: PlaybackState,
+    playbackPosition: StateFlow<PlaybackPosition>,
+    onOpenNowPlaying: () -> Unit,
+    actions: AppActions,
+    tabs: List<TabItem>,
+    selectedTabIndex: Int,
+    bottomBarOffset: Float,
+    bottomBarHeight: Dp,
+    chromeOffset: Float,
+    onMiniPlayerSize: (IntSize) -> Unit,
+    onBottomBarSize: (IntSize) -> Unit,
+    onSelectTab: (Int) -> Unit,
+) {
+    val bottomBarHeightPx = with(LocalDensity.current) { bottomBarHeight.toPx() }
+    val barTranslationPx = if (compact) bottomBarHeightPx else 0f
+    Column(
+        // The whole bottom chrome travels together: the bar slides off-screen while the mini
+        // player takes its place at the bottom instead of being left behind.
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .padding(start = if (!compact) railWidth else 0.dp)
+            .then(if (chromeOffset >= 1f) Modifier.clearAndSetSemantics { } else Modifier)
+            .graphicsLayer {
+                translationY = barTranslationPx * bottomBarOffset + size.height * chromeOffset
+            },
+    ) {
+        AnimatedVisibility(
+            visible = showMiniPlayer,
+            enter = slideInVertically(
+                animationSpec = tween(
+                    MINI_PLAYER_ENTER_MILLIS,
+                    easing = LinearOutSlowInEasing,
+                ),
+                initialOffsetY = { height -> height },
+            ),
+            exit = slideOutVertically(
+                animationSpec = tween(
+                    MINI_PLAYER_EXIT_MILLIS,
+                    easing = FastOutLinearInEasing,
+                ),
+                targetOffsetY = { height -> height },
+            ),
+        ) {
+            Box(Modifier.onSizeChanged(onMiniPlayerSize)) {
+                MiniPlayer(
+                    playbackState,
+                    miniCoverUrl,
+                    playbackPosition,
+                    onOpenNowPlaying,
+                    actions.togglePlayPause,
+                    actions.next,
+                )
+            }
+        }
+        if (compact) {
+            Box(Modifier.onSizeChanged(onBottomBarSize)) {
+                RBottomNavigation(itemCount = tabs.size) {
+                    tabs.forEachIndexed { index, tab ->
+                        RBottomNavigationItem(
+                            selected = index == selectedTabIndex,
+                            onClick = { onSelectTab(index) },
+                            icon = { TabIcon(tab, index == selectedTabIndex) },
+                            label = { Text(stringResource(tab.label)) },
+                        )
                     }
                 }
             }
@@ -410,5 +508,8 @@ private fun routeTitle(route: NavKey?): String {
     return stringResource(resource ?: Res.string.app_name)
 }
 
-private const val DETAIL_MINI_PLAYER_ENTER_MILLIS = 250
-private const val DETAIL_MINI_PLAYER_EXIT_MILLIS = 200
+private const val CHROME_HIDE_MILLIS = 175
+private const val CHROME_SHOW_MILLIS = 225
+private const val MINI_PLAYER_ENTER_MILLIS = 250
+private const val MINI_PLAYER_EXIT_MILLIS = 200
+private val BOTTOM_BAR_SCROLL_THRESHOLD = 24.dp

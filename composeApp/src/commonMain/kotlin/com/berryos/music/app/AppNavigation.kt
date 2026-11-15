@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
@@ -63,6 +64,7 @@ import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackPosition
+import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.albums.AlbumsScreen
@@ -96,6 +98,7 @@ internal fun TabContent(
     chromeMetrics: ChromeMetrics,
     compact: Boolean,
     showMiniPlayer: Boolean,
+    bottomContentInset: Dp,
     onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -115,6 +118,7 @@ internal fun TabContent(
             chromeMetrics,
             compact,
             showMiniPlayer,
+            bottomContentInset,
             onCoverPalette,
             Modifier.fillMaxSize(),
         )
@@ -134,6 +138,7 @@ private fun AppNavDisplay(
     chromeMetrics: ChromeMetrics,
     compact: Boolean,
     showMiniPlayer: Boolean,
+    bottomContentInset: Dp,
     onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -142,8 +147,7 @@ private fun AppNavDisplay(
         start = if (!compact) chromeMetrics.railWidth else 0.dp,
         top = chromeMetrics.topBarHeight,
         end = 0.dp,
-        bottom = (if (compact) chromeMetrics.bottomBarHeight else 0.dp) +
-            (if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp),
+        bottom = 0.dp,
     )
     val pushedPadding = PaddingValues(
         start = 0.dp,
@@ -162,14 +166,14 @@ private fun AppNavDisplay(
             entry<AlbumsRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceAlbums),
             ) {
-                PaddedScreen(rootPadding) { AlbumsScreen(libraryState, actions, controller) }
+                PaddedScreen(rootPadding) { AlbumsScreen(libraryState, actions, controller, bottomContentInset) }
             }
-            entry<SongsRoute> { PaddedScreen(rootPadding) { SongsScreen(libraryState, actions) } }
+            entry<SongsRoute> { PaddedScreen(rootPadding) { SongsScreen(libraryState, actions, bottomContentInset) } }
             entry<PlaylistsRoute> { PaddedScreen(rootPadding) { PlaylistsScreen(actions) } }
             entry<ArtistsRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceArtists),
             ) {
-                PaddedScreen(rootPadding) { ArtistsScreen(libraryState, actions, controller) }
+                PaddedScreen(rootPadding) { ArtistsScreen(libraryState, actions, controller, bottomContentInset) }
             }
             entry<SearchRoute> { PaddedScreen(pushedPadding) { SearchScreen(actions) } }
             entry<SettingsRoute> { PaddedScreen(pushedPadding) { SettingsScreen(actions) } }
@@ -199,6 +203,14 @@ private fun AppNavDisplay(
                         playbackState,
                         playbackPosition,
                         collapseOnPause,
+                        bottomInset = if (
+                            showMiniPlayer &&
+                            playbackState.source != PlaybackSource.Album(route.albumId)
+                        ) {
+                            chromeMetrics.miniPlayerHeight
+                        } else {
+                            0.dp
+                        },
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )
                 }
@@ -229,6 +241,14 @@ private fun AppNavDisplay(
                         playbackState,
                         playbackPosition,
                         collapseOnPause,
+                        bottomInset = if (
+                            showMiniPlayer &&
+                            playbackState.source != PlaybackSource.Artist(route.artistId)
+                        ) {
+                            chromeMetrics.miniPlayerHeight
+                        } else {
+                            0.dp
+                        },
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )
                 }

@@ -1,6 +1,7 @@
 package com.berryos.music.feature.artists
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.container.rContainerTransformSource
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
@@ -44,6 +46,7 @@ internal fun ArtistsScreen(
     state: LibraryUiState,
     actions: AppActions,
     transform: RContainerTransformNavController<ContainerTransformKey>,
+    bottomContentPadding: Dp,
 ) {
     val scope = rememberCoroutineScope()
     var viewportBounds by remember { mutableStateOf<Rect?>(null) }
@@ -74,6 +77,7 @@ internal fun ArtistsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .onGloballyPositioned { viewportBounds = it.boundsInWindow() },
+                    contentPadding = PaddingValues(bottom = bottomContentPadding),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
