@@ -1,8 +1,18 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.detekt)
+}
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        FileInputStream(keystorePropertiesFile).use { load(it) }
+    }
 }
 
 android {
@@ -18,9 +28,29 @@ android {
         manifestPlaceholders["logtoRedirectScheme"] = "com.berryos.music"
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                enableV4Signing = true
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             isMinifyEnabled = false
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -52,6 +82,9 @@ afterEvaluate {
         ":composeApp:copyNonXmlValueResourcesForCommonMain",
     )
     tasks.matching { task -> task.name.contains("merge") && task.name.contains("Assets") }.configureEach {
+        composeResourceTasks.forEach { taskPath -> dependsOn(taskPath) }
+    }
+    tasks.matching { task -> task.name.contains("lint", ignoreCase = true) }.configureEach {
         composeResourceTasks.forEach { taskPath -> dependsOn(taskPath) }
     }
 }
