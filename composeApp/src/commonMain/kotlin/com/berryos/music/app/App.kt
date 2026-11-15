@@ -3,12 +3,6 @@
 package com.berryos.music.app
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -80,6 +74,10 @@ import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
 import art.rippledesign.compose.rui.RTopAppBar
 import art.rippledesign.compose.rui.fadeThrough
+import art.rippledesign.compose.rui.navigation3.LocalRContainerTransformNavigationEventState
+import art.rippledesign.compose.rui.navigation3.RContainerTransformNavEntry
+import art.rippledesign.compose.rui.navigation3.rContainerTransformTransition
+import art.rippledesign.compose.rui.navigation3.rememberRContainerTransformNavController
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
@@ -733,7 +731,7 @@ private fun AppNavDisplay(
     onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val controller = rememberContainerTransformController()
+    val controller = rememberRContainerTransformNavController<ContainerTransformKey>()
     val rootPadding = PaddingValues(
         start = if (!compact) chromeMetrics.railWidth else 0.dp,
         top = chromeMetrics.topBarHeight,
@@ -772,9 +770,10 @@ private fun AppNavDisplay(
             entry<AlbumRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetAlbum),
             ) { route ->
-                ContainerTransformEntry(
+                RContainerTransformNavEntry(
                     key = albumTransformKey(route.source, route.albumId),
                     controller = controller,
+                    spec = ContainerTransformSpec,
                 ) {
                     AlbumScreen(
                         route.source,
@@ -790,9 +789,10 @@ private fun AppNavDisplay(
             entry<ArtistRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetArtist),
             ) { route ->
-                ContainerTransformEntry(
+                RContainerTransformNavEntry(
                     key = artistTransformKey(route.source, route.artistId),
                     controller = controller,
+                    spec = ContainerTransformSpec,
                 ) {
                     ArtistScreen(
                         route.source,
@@ -825,6 +825,8 @@ private fun AppNavDisplay(
         onBack = actions.back,
     )
     val navigationEventState = rememberNavigationEventState(sceneState)
+    // Block back while a return animates, but never while a predictive gesture is in progress:
+    // flipping isBackEnabled mid-gesture makes the system cancel it.
     val backBlockedByTransition = controller.transitionRunning &&
         !controller.transformEntering &&
         navigationEventState.transitionState !is NavigationEventTransitionState.InProgress
@@ -835,28 +837,30 @@ private fun AppNavDisplay(
         onBackCompleted = actions.back,
     )
     Box(modifier = modifier) {
-        CompositionLocalProvider(LocalContainerTransformNavigationEventState provides navigationEventState) {
+        CompositionLocalProvider(LocalRContainerTransformNavigationEventState provides navigationEventState) {
+            // Container transform pairs get a duration-only scene transition: the transform draws
+            // the visuals, while the transition keeps both scenes composed for its length.
             NavDisplay(
                 sceneState = sceneState,
                 navigationEventState = navigationEventState,
                 modifier = Modifier.fillMaxSize(),
                 transitionSpec = {
                     if (isContainerTransformPair(initialState, targetState)) {
-                        noOpContainerTransition(ContainerTransformSpec.enterDurationMillis)
+                        rContainerTransformTransition(ContainerTransformSpec.enterDurationMillis)
                     } else {
                         defaultTransitionSpec<NavKey>().invoke(this)
                     }
                 },
                 popTransitionSpec = {
                     if (isContainerTransformPair(initialState, targetState)) {
-                        noOpContainerTransition(ContainerTransformSpec.returnDurationMillis)
+                        rContainerTransformTransition(ContainerTransformSpec.returnDurationMillis)
                     } else {
                         defaultPopTransitionSpec<NavKey>().invoke(this)
                     }
                 },
                 predictivePopTransitionSpec = { swipeEdge ->
                     if (isContainerTransformPair(initialState, targetState)) {
-                        noOpContainerTransition(ContainerTransformSpec.returnDurationMillis)
+                        rContainerTransformTransition(ContainerTransformSpec.returnDurationMillis)
                     } else {
                         defaultPredictivePopTransitionSpec<NavKey>().invoke(this, swipeEdge)
                     }
@@ -864,6 +868,7 @@ private fun AppNavDisplay(
             )
         }
         if (controller.transitionRunning) {
+            // The scenes under the transform must not receive taps while it animates.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -883,6 +888,8 @@ private const val CONTAINER_TRANSFORM_TAG_KEY = "berry.containerTransformTag"
 
 private enum class ContainerTransformTag { SourceAlbums, SourceArtists, TargetAlbum, TargetArtist }
 
+// Both directions are pairs: the pop must use the duration-only transition as well, otherwise
+// Nav3 falls back to the default pop animation on return.
 private fun isContainerTransformPair(initial: Scene<NavKey>, target: Scene<NavKey>): Boolean {
     val from = initial.entries.lastOrNull()?.metadata?.get(CONTAINER_TRANSFORM_TAG_KEY)
     val to = target.entries.lastOrNull()?.metadata?.get(CONTAINER_TRANSFORM_TAG_KEY)
@@ -892,10 +899,6 @@ private fun isContainerTransformPair(initial: Scene<NavKey>, target: Scene<NavKe
         (from == ContainerTransformTag.TargetArtist && to == ContainerTransformTag.SourceArtists)
     return albumsPair || artistsPair
 }
-
-private fun noOpContainerTransition(durationMillis: Int): ContentTransform =
-    fadeIn(tween(durationMillis, easing = LinearEasing), initialAlpha = 1f) togetherWith
-        fadeOut(tween(durationMillis, easing = LinearEasing), targetAlpha = 1f)
 
 @Composable
 private fun PaddedScreen(padding: PaddingValues, content: @Composable () -> Unit) {

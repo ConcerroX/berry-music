@@ -33,5 +33,6 @@ include(":androidApp")
 includeBuild("../../../Ripple Design/rui-compose") {
     dependencySubstitution {
         substitute(module("art.rippledesign:compose-rui")).using(project(":"))
+        substitute(module("art.rippledesign:compose-rui-navigation3")).using(project(":navigation3"))
     }
 }

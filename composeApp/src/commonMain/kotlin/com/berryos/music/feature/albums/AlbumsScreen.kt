@@ -10,11 +10,13 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.container.rContainerTransformSource
-import com.berryos.music.app.ContainerTransformController
+import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
+import art.rippledesign.compose.rui.navigation3.rememberRContainerTransformHold
+import com.berryos.music.app.ContainerTransformKey
+import com.berryos.music.app.ContainerTransformSpec
 import com.berryos.music.app.albumTransformKey
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AppActions
-import com.berryos.music.app.rememberContainerTransformHold
 import com.berryos.music.core.designsystem.CoverTile
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
@@ -30,9 +32,18 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun AlbumsScreen(state: LibraryUiState, actions: AppActions, transform: ContainerTransformController) {
+internal fun AlbumsScreen(
+    state: LibraryUiState,
+    actions: AppActions,
+    transform: RContainerTransformNavController<ContainerTransformKey>,
+) {
     val scope = rememberCoroutineScope()
-    rememberContainerTransformHold(active = transform.activeKey != null)
+    // Keeps this grid composed while the transform draws it; Nav3 would otherwise drop it as soon
+    // as its own scene transition settles.
+    rememberRContainerTransformHold(
+        active = transform.activeKey != null,
+        durationMillis = ContainerTransformSpec.enterDurationMillis,
+    )
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
@@ -64,12 +75,16 @@ internal fun AlbumsScreen(state: LibraryUiState, actions: AppActions, transform:
                             text = stringResource(Res.string.album_summary, album.artist, album.trackCount),
                             modifier = Modifier.rContainerTransformSource(
                                 state = sourceState,
-                                hidden = transform.hiddenKey == key,
+                                // Read in the draw phase so the tile can reappear in the same frame
+                                // the transform entry is disposed.
+                                hidden = { transform.hiddenKey == key },
                             ),
                         ) {
                             if (transform.activeKey == null) {
                                 transform.request(key)
                                 scope.launch {
+                                    // Wait one frame for the card snapshot; navigating earlier would
+                                    // start the transform without a source.
                                     withTimeoutOrNull(SOURCE_RECORD_TIMEOUT_MILLIS) {
                                         snapshotFlow { sourceState.recorded }.first { it }
                                     }

@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.coil.network.ktor3)
             implementation(libs.koin.compose.viewmodel)
             implementation("art.rippledesign:compose-rui")
+            implementation("art.rippledesign:compose-rui-navigation3")
         }
 
         commonTest.dependencies {
