@@ -42,22 +42,22 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
     private var source: PlaybackSource = PlaybackSource.Queue
     private var pendingPlay: PendingPlay? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var progressJob: Job? = null
+    private var positionJob: Job? = null
     private val _state = MutableStateFlow(PlaybackState())
     override val state: StateFlow<PlaybackState> = _state.asStateFlow()
-    private val _progress = MutableStateFlow(PlaybackProgress())
-    override val progress: StateFlow<PlaybackProgress> = _progress.asStateFlow()
+    private val _position = MutableStateFlow(PlaybackPosition())
+    override val position: StateFlow<PlaybackPosition> = _position.asStateFlow()
 
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updateState()
-            updateProgress()
-            syncProgressUpdates()
+            updatePosition()
+            syncPositionUpdates()
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateState()
-            updateProgress()
+            updatePosition()
         }
 
         override fun onPositionDiscontinuity(
@@ -65,7 +65,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
-            updateProgress()
+            updatePosition()
         }
     }
 
@@ -78,8 +78,8 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
                 pendingPlay?.let { play(it.tracks, it.startIndex, it.source) }
                 pendingPlay = null
                 updateState()
-                updateProgress()
-                syncProgressUpdates()
+                updatePosition()
+                syncPositionUpdates()
             },
             ContextCompat.getMainExecutor(appContext),
         )
@@ -117,12 +117,12 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         mediaController.prepare()
         mediaController.play()
         updateState()
-        updateProgress()
+        updatePosition()
     }
 
     override fun togglePlayPause() {
         val mediaController = controller ?: return
-        if (mediaController.isPlaying) mediaController.pause() else mediaController.play()
+        if (mediaController.playWhenReady) mediaController.pause() else mediaController.play()
     }
 
     override fun next() {
@@ -135,8 +135,13 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         controller?.play()
     }
 
+    override fun seekTo(positionMs: Long) {
+        controller?.seekTo(positionMs)
+        updatePosition()
+    }
+
     fun release() {
-        progressJob?.cancel()
+        positionJob?.cancel()
         scope.cancel()
         controller?.removeListener(listener)
         MediaController.releaseFuture(controllerFuture)
@@ -148,38 +153,40 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         _state.value = PlaybackState(
             queue = tracks,
             currentIndex = mediaController.currentMediaItemIndex,
-            isPlaying = mediaController.isPlaying,
+            // The intent, not the transient isPlaying flag: buffering after a seek would
+            // otherwise flip the icon and the header back to the paused state.
+            isPlayRequested = mediaController.playWhenReady && mediaController.playbackState != Player.STATE_ENDED,
             source = source,
         )
     }
 
-    private fun updateProgress() {
+    private fun updatePosition() {
         val mediaController = controller ?: return
         val duration = mediaController.duration
             .takeIf { it != C.TIME_UNSET && it > 0L }
             ?: tracks.getOrNull(mediaController.currentMediaItemIndex)?.durationMs
             ?: 0L
-        _progress.value = PlaybackProgress(
+        _position.value = PlaybackPosition(
             positionMs = mediaController.currentPosition.coerceAtLeast(0L),
             durationMs = duration,
         )
     }
 
-    /** Media3 has no position callback, so the progress is sampled while playback runs. */
-    private fun syncProgressUpdates() {
+    /** Media3 has no position callback, so the position is sampled while playback runs. */
+    private fun syncPositionUpdates() {
         val mediaController = controller ?: return
-        if (mediaController.isPlaying) {
-            if (progressJob == null) {
-                progressJob = scope.launch {
+        if (mediaController.playWhenReady && mediaController.playbackState != Player.STATE_ENDED) {
+            if (positionJob == null) {
+                positionJob = scope.launch {
                     while (isActive) {
-                        updateProgress()
-                        delay(PROGRESS_INTERVAL_MILLIS)
+                        updatePosition()
+                        delay(POSITION_INTERVAL_MILLIS)
                     }
                 }
             }
         } else {
-            progressJob?.cancel()
-            progressJob = null
+            positionJob?.cancel()
+            positionJob = null
         }
     }
 
@@ -197,7 +204,7 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
 
     companion object {
         private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
-        private const val PROGRESS_INTERVAL_MILLIS = 500L
+        private const val POSITION_INTERVAL_MILLIS = 500L
     }
 
     private data class PendingPlay(val tracks: List<Track>, val startIndex: Int, val source: PlaybackSource)

@@ -40,10 +40,12 @@ import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.RCircularReveal
 import art.rippledesign.compose.rui.RPlayPauseIcon
 import com.berryos.music.core.designsystem.CoverColors
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackStatus
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.pause
 import com.berryos.music.resources.play
+import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -55,7 +57,9 @@ internal fun MediaPlaybackHeader(
     onTogglePlayPause: () -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
     playbackStatus: PlaybackStatus,
+    playbackPosition: StateFlow<PlaybackPosition>,
     collapseOnPause: Boolean,
 ) {
     val state = rememberMediaPlaybackHeaderState(playbackStatus, collapseOnPause)
@@ -94,12 +98,14 @@ internal fun MediaPlaybackHeader(
             bandWidth = state.bandSize.width.toFloat(),
             controlsProgress = state.controlsProgress.value,
             volumeAlpha = state.volumeProgress.value,
-            topStripProgress = state.topStripProgress.value,
+            stripReveal = state.topStripProgress.value,
             titleAlpha = 1f - state.titleFadeProgress.value,
             bottomTextAlpha = state.bottomTextProgress.value,
             revealShadow = state.revealShadowProgress.value,
+            playbackPosition = playbackPosition,
             onPrevious = onPrevious,
             onNext = onNext,
+            onSeek = onSeek,
         )
         PlayFabs(
             state = state,
@@ -123,12 +129,14 @@ private fun BoxScope.MediaHeaderLayers(
     bandWidth: Float,
     controlsProgress: Float,
     volumeAlpha: Float,
-    topStripProgress: Float,
+    stripReveal: Float,
     titleAlpha: Float,
     bottomTextAlpha: Float,
     revealShadow: Float,
+    playbackPosition: StateFlow<PlaybackPosition>,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSeek: (Long) -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -173,10 +181,11 @@ private fun BoxScope.MediaHeaderLayers(
         onPrevious = onPrevious,
         onNext = onNext,
     )
-    val progressColor = colors?.let {
+    val stripColor = colors?.let {
         it.accentContentColor.copy(alpha = PROGRESS_CONTENT_ALPHA).compositeOver(it.accentColor)
     } ?: Color.White
-    MediaTopStrip(topStripProgress, progressColor)
+    val stripContentColor = colors?.accentContentColor ?: Color.Unspecified
+    MediaTopStrip(stripReveal, stripColor, stripContentColor, playbackPosition, onSeek)
     MediaBottomText(title, subtitle, colors, bottomTextAlpha)
 }
 

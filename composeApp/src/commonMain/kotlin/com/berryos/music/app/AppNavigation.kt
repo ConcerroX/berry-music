@@ -62,6 +62,7 @@ import com.berryos.music.core.designsystem.withContainerColor
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.albums.AlbumsScreen
@@ -80,6 +81,7 @@ import com.berryos.music.feature.settings.ServerEditScreen
 import com.berryos.music.feature.settings.ServersScreen
 import com.berryos.music.feature.settings.SettingsScreen
 import com.berryos.music.feature.songs.SongsScreen
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 internal fun TabContent(
@@ -88,6 +90,7 @@ internal fun TabContent(
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
+    playbackPosition: StateFlow<PlaybackPosition>,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
     chromeMetrics: ChromeMetrics,
@@ -106,6 +109,7 @@ internal fun TabContent(
             actions,
             libraryState,
             playbackState,
+            playbackPosition,
             settings,
             collapseOnPause,
             chromeMetrics,
@@ -124,6 +128,7 @@ private fun AppNavDisplay(
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
+    playbackPosition: StateFlow<PlaybackPosition>,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
     chromeMetrics: ChromeMetrics,
@@ -192,6 +197,7 @@ private fun AppNavDisplay(
                         libraryState,
                         actions,
                         playbackState,
+                        playbackPosition,
                         collapseOnPause,
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )
@@ -221,6 +227,7 @@ private fun AppNavDisplay(
                         libraryState,
                         actions,
                         playbackState,
+                        playbackPosition,
                         collapseOnPause,
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )

@@ -7,6 +7,7 @@ import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.SourceKey
 import com.berryos.music.core.model.album
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.core.playback.playbackStatus
@@ -15,6 +16,7 @@ import com.berryos.music.resources.Res
 import com.berryos.music.resources.album
 import com.berryos.music.resources.album_not_found
 import com.berryos.music.resources.loading_library
+import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -24,6 +26,7 @@ fun AlbumScreen(
     state: LibraryUiState,
     actions: AppActions,
     playbackState: PlaybackState,
+    playbackPosition: StateFlow<PlaybackPosition>,
     collapseOnPause: Boolean,
     topBar: @Composable (Color?) -> Unit = {},
 ) {
@@ -51,6 +54,7 @@ fun AlbumScreen(
                     tracks = tracks,
                     playbackSource = playbackSource,
                     playbackStatus = playbackState.playbackStatus(playbackSource),
+                    playbackPosition = playbackPosition,
                     collapseOnPause = collapseOnPause,
                     actions = actions,
                     topBar = topBar,

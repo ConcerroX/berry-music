@@ -16,7 +16,7 @@ sealed interface PlaybackSource {
 data class PlaybackState(
     val queue: List<Track> = emptyList(),
     val currentIndex: Int = -1,
-    val isPlaying: Boolean = false,
+    val isPlayRequested: Boolean = false,
     val source: PlaybackSource = PlaybackSource.Queue,
 ) {
     val currentTrack: Track?
@@ -34,19 +34,23 @@ enum class PlaybackStatus {
 
 fun PlaybackState.playbackStatus(source: PlaybackSource): PlaybackStatus = when {
     this.source != source -> PlaybackStatus.NotPlaying
-    isPlaying -> PlaybackStatus.Playing
+    isPlayRequested -> PlaybackStatus.Playing
     else -> PlaybackStatus.Paused
 }
 
-/** Playhead position, sampled separately so the high-frequency updates stay out of [PlaybackState]. */
-data class PlaybackProgress(val positionMs: Long = 0L, val durationMs: Long = 0L)
+/**
+ * Playhead position and track duration, sampled separately so the high-frequency updates stay out
+ * of [PlaybackState].
+ */
+data class PlaybackPosition(val positionMs: Long = 0L, val durationMs: Long = 0L)
 
 interface PlaybackController {
     val state: StateFlow<PlaybackState>
-    val progress: StateFlow<PlaybackProgress>
+    val position: StateFlow<PlaybackPosition>
 
     fun play(tracks: List<Track>, startIndex: Int, source: PlaybackSource = PlaybackSource.Queue)
     fun togglePlayPause()
     fun next()
     fun previous()
+    fun seekTo(positionMs: Long)
 }

@@ -36,8 +36,10 @@ import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.designsystem.rememberAlbumCoverColors
 import com.berryos.music.core.model.Track
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackStatus
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun MediaDetailScreen(
@@ -47,6 +49,7 @@ fun MediaDetailScreen(
     tracks: List<Track>,
     playbackSource: PlaybackSource,
     playbackStatus: PlaybackStatus,
+    playbackPosition: StateFlow<PlaybackPosition>,
     collapseOnPause: Boolean,
     actions: AppActions,
     topBar: @Composable (Color?) -> Unit = {},
@@ -77,7 +80,9 @@ fun MediaDetailScreen(
                     onTogglePlayPause = actions.togglePlayPause,
                     onPrevious = actions.previous,
                     onNext = actions.next,
+                    onSeek = actions.seekTo,
                     playbackStatus = playbackStatus,
+                    playbackPosition = playbackPosition,
                     collapseOnPause = collapseOnPause,
                 )
             }

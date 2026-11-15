@@ -10,4 +10,5 @@ class AppActions(
     val togglePlayPause: () -> Unit,
     val next: () -> Unit,
     val previous: () -> Unit,
+    val seekTo: (Long) -> Unit,
 )

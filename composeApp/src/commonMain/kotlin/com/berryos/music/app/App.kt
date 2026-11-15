@@ -136,6 +136,7 @@ internal fun AppShell(
         togglePlayPause = playback::togglePlayPause,
         next = playback::next,
         previous = playback::previous,
+        seekTo = playback::seekTo,
     )
     val playbackSheetState = rememberModalBottomSheetState(
         initialValue = ModalBottomSheetValue.Hidden,
@@ -161,6 +162,7 @@ internal fun AppShell(
                                 libraryState,
                                 actions,
                                 playbackState,
+                                playback.position,
                                 collapseOnPause,
                             )
 
@@ -171,6 +173,7 @@ internal fun AppShell(
                                 libraryState,
                                 actions,
                                 playbackState,
+                                playback.position,
                                 collapseOnPause,
                             )
 
@@ -188,7 +191,7 @@ internal fun AppShell(
             actions,
             libraryState,
             playbackState,
-            playback.progress,
+            playback.position,
             authState,
             auth,
             settings,

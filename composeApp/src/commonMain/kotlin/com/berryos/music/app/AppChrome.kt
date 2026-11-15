@@ -67,7 +67,7 @@ import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
-import com.berryos.music.core.playback.PlaybackProgress
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.nowplaying.MiniPlayer
 import com.berryos.music.resources.Res
@@ -105,7 +105,7 @@ internal fun AppChrome(
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
-    playbackProgress: StateFlow<PlaybackProgress>,
+    playbackPosition: StateFlow<PlaybackPosition>,
     authState: AuthState,
     auth: AuthController,
     settings: AppSettingsRepository,
@@ -193,7 +193,7 @@ internal fun AppChrome(
                     showMiniPlayer = showMiniPlayer,
                     miniCoverUrl = miniCoverUrl,
                     playbackState = playbackState,
-                    playbackProgress = playbackProgress,
+                    playbackPosition = playbackPosition,
                     onOpenNowPlaying = onOpenNowPlaying,
                     actions = actions,
                     railWidth = railWidth,
@@ -212,6 +212,7 @@ internal fun AppChrome(
                     actions = actions,
                     libraryState = libraryState,
                     playbackState = playbackState,
+                    playbackPosition = playbackPosition,
                     settings = settings,
                     collapseOnPause = collapseOnPause,
                     chromeMetrics = chromeMetrics,
@@ -244,7 +245,7 @@ private fun ChromeUnderlay(
     showMiniPlayer: Boolean,
     miniCoverUrl: String?,
     playbackState: PlaybackState,
-    playbackProgress: StateFlow<PlaybackProgress>,
+    playbackPosition: StateFlow<PlaybackPosition>,
     onOpenNowPlaying: () -> Unit,
     actions: AppActions,
     railWidth: Dp,
@@ -299,7 +300,7 @@ private fun ChromeUnderlay(
                     MiniPlayer(
                         playbackState,
                         miniCoverUrl,
-                        playbackProgress,
+                        playbackPosition,
                         onOpenNowPlaying,
                         actions.togglePlayPause,
                         actions.next,

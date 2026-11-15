@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.berryos.music.core.designsystem.AlbumCover
 import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.core.model.Track
-import com.berryos.music.core.playback.PlaybackProgress
+import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.ic_pause
@@ -41,13 +41,13 @@ import org.jetbrains.compose.resources.stringResource
 fun MiniPlayer(
     state: PlaybackState,
     coverUrl: String?,
-    progress: StateFlow<PlaybackProgress>,
+    playbackPosition: StateFlow<PlaybackPosition>,
     onClick: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onNext: () -> Unit,
 ) {
     val track = state.currentTrack ?: return
-    val playbackProgress by progress.collectAsState()
+    val position by playbackPosition.collectAsState()
     Surface(elevation = 8.dp) {
         Row(
             modifier = Modifier
@@ -63,10 +63,16 @@ fun MiniPlayer(
                     .fillMaxHeight(),
             ) {
                 LinearProgressIndicator(
-                    progress = trackProgress(playbackProgress),
+                    progress = playbackFraction(position),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                MiniPlayerBody(track, state.isPlaying, onTogglePlayPause, onNext, Modifier.weight(1f))
+                MiniPlayerBody(
+                    track,
+                    state.isPlayRequested,
+                    onTogglePlayPause,
+                    onNext,
+                    Modifier.weight(1f),
+                )
             }
         }
     }
@@ -75,7 +81,7 @@ fun MiniPlayer(
 @Composable
 private fun MiniPlayerBody(
     track: Track,
-    isPlaying: Boolean,
+    isPlayRequested: Boolean,
     onTogglePlayPause: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
@@ -102,10 +108,10 @@ private fun MiniPlayerBody(
         IconButton(onClick = onTogglePlayPause) {
             Icon(
                 painter = painterResource(
-                    if (isPlaying) Res.drawable.ic_pause else Res.drawable.ic_play_arrow,
+                    if (isPlayRequested) Res.drawable.ic_pause else Res.drawable.ic_play_arrow,
                 ),
                 contentDescription = stringResource(
-                    if (isPlaying) Res.string.pause else Res.string.play,
+                    if (isPlayRequested) Res.string.pause else Res.string.play,
                 ),
             )
         }
@@ -118,8 +124,8 @@ private fun MiniPlayerBody(
     }
 }
 
-private fun trackProgress(progress: PlaybackProgress): Float = if (progress.durationMs > 0L) {
-    (progress.positionMs.toFloat() / progress.durationMs).coerceIn(0f, 1f)
+private fun playbackFraction(position: PlaybackPosition): Float = if (position.durationMs > 0L) {
+    (position.positionMs.toFloat() / position.durationMs).coerceIn(0f, 1f)
 } else {
     0f
 }
