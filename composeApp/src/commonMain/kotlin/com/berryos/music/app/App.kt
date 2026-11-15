@@ -221,20 +221,25 @@ private fun AppShell(
     val appSettings by settings.settings.collectAsState()
     val collapseOnPause = appSettings.collapsePlayerOnPause
     val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
+    val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
+        playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
     ModalBottomSheetLayout(
         sheetState = playbackSheetState,
         sheetContent = {
             Surface(modifier = Modifier.fillMaxSize()) {
-                when (val target = nowPlayingTarget) {
-                    is NowPlayingTarget.Album ->
-                        AlbumScreen(target.albumId, libraryState, actions, playbackState, collapseOnPause)
+                // Only the visible sheet owns a header state; a hidden sheet must not mirror the page.
+                if (sheetVisible) {
+                    when (val target = nowPlayingTarget) {
+                        is NowPlayingTarget.Album ->
+                            AlbumScreen(target.albumId, libraryState, actions, playbackState, collapseOnPause)
 
-                    is NowPlayingTarget.Artist ->
-                        ArtistScreen(target.artistId, libraryState, actions, playbackState, collapseOnPause)
+                        is NowPlayingTarget.Artist ->
+                            ArtistScreen(target.artistId, libraryState, actions, playbackState, collapseOnPause)
 
-                    is NowPlayingTarget.Playlist -> PlaylistScreen(target.playlistId)
+                        is NowPlayingTarget.Playlist -> PlaylistScreen(target.playlistId)
 
-                    null -> Unit
+                        null -> Unit
+                    }
                 }
             }
         },
