@@ -378,6 +378,10 @@ private fun rememberMediaPlaybackHeaderState(
         val pausedHere = wasPlaying && playbackStatus == PlaybackStatus.Paused && collapseOnPause
         if ((collapsedToFab || pausedHere) && state.expanded) {
             state.collapse()
+        } else if (playbackStatus != PlaybackStatus.NotPlaying && !state.expanded && !state.collapsing) {
+            // Playback was started elsewhere (e.g. a track in the list), so the header follows
+            // without re-triggering play.
+            state.start(onPlay = {})
         }
         wasPlaying = playbackStatus == PlaybackStatus.Playing
     }
