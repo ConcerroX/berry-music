@@ -35,7 +35,9 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -73,6 +75,7 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MediaDetailScreen(
     title: String,
@@ -97,9 +100,7 @@ fun MediaDetailScreen(
     val expansionState = remember(scope, listState, appBarBottomPx) {
         TrackListExpansionState(scope, listState, appBarBottomPx)
     }
-    LaunchedEffect(expansionState.expandable) {
-        expansionState.collapseIfNotExpandable()
-    }
+    LaunchedEffect(expansionState.expandable) { expansionState.collapseIfNotExpandable() }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -140,6 +141,8 @@ fun MediaDetailScreen(
                 )
             },
         )
+        // Back closes the expanded card first; the playback header takes the next press.
+        BackHandler(enabled = expansionState.expansion > 0f) { expansionState.collapse() }
         topBar(coverColors.colors?.contentColor)
     }
 }

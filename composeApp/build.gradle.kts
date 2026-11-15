@@ -30,6 +30,7 @@ kotlin {
             implementation(compose.material)
             implementation(compose.components.resources)
             implementation(compose.ui)
+            implementation(libs.compose.ui.backhandler)
             implementation(libs.navigation3.ui)
             implementation(libs.lifecycle.viewmodel.navigation3)
             implementation(libs.lifecycle.viewmodel.compose)

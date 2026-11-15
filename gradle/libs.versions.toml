@@ -41,6 +41,7 @@ logto-android = { module = "io.logto.sdk:android", version.ref = "logto" }
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 androidx-palette = { module = "androidx.palette:palette", version.ref = "androidx-palette" }
+compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
