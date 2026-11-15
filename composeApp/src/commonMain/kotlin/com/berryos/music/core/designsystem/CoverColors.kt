@@ -24,6 +24,9 @@ private val coverColorsCache = mutableStateMapOf<String, CoverColors>()
 
 fun cachedCoverColors(coverUrl: String): CoverColors? = coverColorsCache[coverUrl]
 
+/** Cached background color of a cover, or null while the palette is not available. */
+fun cachedCoverBackground(coverUrl: String?): Color? = coverUrl?.let(::cachedCoverColors)?.background
+
 fun cacheCoverColors(coverUrl: String, colors: CoverColors) {
     coverColorsCache[coverUrl] = colors
 }

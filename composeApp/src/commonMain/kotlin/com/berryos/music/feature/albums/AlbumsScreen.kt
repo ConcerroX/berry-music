@@ -19,11 +19,11 @@ import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.container.rContainerTransformSource
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
 import art.rippledesign.compose.rui.navigation3.rememberRContainerTransformHold
-import com.berryos.music.app.ContainerTransformKey
-import com.berryos.music.app.ContainerTransformSpec
-import com.berryos.music.app.albumTransformKey
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AppActions
+import com.berryos.music.app.navigation.ContainerTransformKey
+import com.berryos.music.app.navigation.albumTransformKey
+import com.berryos.music.core.designsystem.ContainerTransformSpec
 import com.berryos.music.core.designsystem.CoverTile
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
