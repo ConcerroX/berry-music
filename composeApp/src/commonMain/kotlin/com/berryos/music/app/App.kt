@@ -15,6 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
@@ -40,6 +41,8 @@ import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.artist.ArtistScreen
 import com.berryos.music.feature.playlist.PlaylistScreen
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.collapse
+import com.berryos.music.resources.ic_expand_more
 import com.berryos.music.resources.ic_filled_album
 import com.berryos.music.resources.ic_filled_home
 import com.berryos.music.resources.ic_filled_music_note
@@ -148,6 +151,17 @@ internal fun AppShell(
     val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
     val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
         playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
+    val sheetTopBar: @Composable (Color?) -> Unit = { contentColor ->
+        AppTopBar(
+            title = null,
+            onBack = { scope.launch { playbackSheetState.hide() } },
+            onMenu = null,
+            transparent = true,
+            contentColor = contentColor,
+            backIcon = Res.drawable.ic_expand_more,
+            backLabel = Res.string.collapse,
+        )
+    }
     ModalBottomSheetLayout(
         sheetState = playbackSheetState,
         sheetContent = {
@@ -164,6 +178,7 @@ internal fun AppShell(
                                 playbackState,
                                 playback.position,
                                 collapseOnPause,
+                                topBar = sheetTopBar,
                             )
 
                         is NowPlayingTarget.Artist ->
@@ -175,6 +190,7 @@ internal fun AppShell(
                                 playbackState,
                                 playback.position,
                                 collapseOnPause,
+                                topBar = sheetTopBar,
                             )
 
                         is NowPlayingTarget.Playlist -> PlaylistScreen(target.playlistId)

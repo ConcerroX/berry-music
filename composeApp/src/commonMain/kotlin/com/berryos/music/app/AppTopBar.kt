@@ -23,6 +23,8 @@ import com.berryos.music.resources.ic_menu
 import com.berryos.music.resources.ic_more_vert
 import com.berryos.music.resources.menu
 import com.berryos.music.resources.more_options
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -34,16 +36,18 @@ internal fun AppTopBar(
     transparent: Boolean = false,
     contentColor: Color? = null,
     onCoverPalette: (() -> Unit)? = null,
+    backIcon: DrawableResource = Res.drawable.ic_arrow_back,
+    backLabel: StringResource = Res.string.back,
 ) {
     val back = onBack
     val menu = onMenu
-    val navigationIcon: (@Composable () -> Unit)? = when {
+    val navIcon: (@Composable () -> Unit)? = when {
         back != null -> {
             {
                 IconButton(onClick = back) {
                     Icon(
-                        painter = painterResource(Res.drawable.ic_arrow_back),
-                        contentDescription = stringResource(Res.string.back),
+                        painter = painterResource(backIcon),
+                        contentDescription = stringResource(backLabel),
                     )
                 }
             }
@@ -68,7 +72,7 @@ internal fun AppTopBar(
     if (transparent) {
         RTopAppBar(
             title = { title?.let { Text(it) } },
-            navigationIcon = navigationIcon,
+            navigationIcon = navIcon,
             actions = { more?.invoke() },
             backgroundColor = Color.Transparent,
             contentColor = contentColor ?: LocalContentColor.current,
@@ -77,7 +81,7 @@ internal fun AppTopBar(
     } else {
         RTopAppBar(
             title = { title?.let { Text(it) } },
-            navigationIcon = navigationIcon,
+            navigationIcon = navIcon,
             actions = { more?.invoke() },
         )
     }
