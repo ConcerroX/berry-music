@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.compositeOver
@@ -39,6 +38,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import art.rippledesign.compose.rui.RCircularReveal
 import art.rippledesign.compose.rui.RPlayPauseIcon
 import com.berryos.music.core.designsystem.CoverColors
@@ -61,7 +61,6 @@ internal fun MediaPlaybackHeader(
     collapseOnPause: Boolean,
 ) {
     val state = rememberMediaPlaybackHeaderState(playbackStatus, collapseOnPause)
-    val iconPlaying = state.expanded && playbackStatus == PlaybackStatus.Playing
     val fabColor = colors?.accentColor ?: MaterialTheme.colors.secondary
     val fabContentColor = colors?.accentContentColor ?: MaterialTheme.colors.onSecondary
     val density = LocalDensity.current
@@ -111,10 +110,11 @@ internal fun MediaPlaybackHeader(
             onClick = { state.start(onPlay) },
         )
         PlayFabIcon(
-            playing = iconPlaying,
+            playing = state.expanded && playbackStatus == PlaybackStatus.Playing,
             contentColor = fabContentColor,
             moved = state.fabArrived,
             translation = fabTranslation,
+            iconSize = lerp(COLLAPSED_ICON_SIZE, PLAY_ICON_SIZE, state.iconScaleProgress.value),
             onClick = onTogglePlayPause,
         )
     }
@@ -143,6 +143,8 @@ private fun BoxScope.MediaHeaderLayers(
             .matchParentSize()
             .background(colors?.background ?: Color.Transparent),
     )
+    // Below the reveal so the expanded player covers it.
+    BandTopEdge()
     MediaTitleText(title, subtitle, colors, titleAlpha)
     val density = LocalDensity.current
     Box(
@@ -167,18 +169,10 @@ private fun BoxScope.MediaHeaderLayers(
     val finalInset = with(density) { (CONTROL_EDGE_MARGIN + CONTROL_SIZE / 2).toPx() }
     val finalY = with(density) { FAB_TARGET_TOP.toPx() }
     val volumeY = finalY + with(density) { VOLUME_CENTER_DISTANCE.toPx() }
+    val centers = controlCenters(revealOrigin, bandWidth, startGap, finalInset, finalY, controlsProgress)
     MediaPlaybackControls(
         colors = colors,
-        previousCenter = lerp(
-            Offset(revealOrigin.x - startGap, revealOrigin.y),
-            Offset(finalInset, finalY),
-            controlsProgress,
-        ),
-        nextCenter = lerp(
-            Offset(revealOrigin.x + startGap, revealOrigin.y),
-            Offset(bandWidth - finalInset, finalY),
-            controlsProgress,
-        ),
+        centers = centers,
         muteCenter = Offset(finalInset, volumeY),
         volumeUpCenter = Offset(bandWidth - finalInset, volumeY),
         controlsAlpha = controlsProgress,
@@ -192,6 +186,17 @@ private fun BoxScope.MediaHeaderLayers(
     } ?: Color.White
     MediaTopStrip(topStripProgress, progressColor)
     MediaBottomText(title, subtitle, colors, bottomTextAlpha)
+}
+
+@Composable
+private fun BoxScope.BandTopEdge() {
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .fillMaxWidth()
+            .height(TOP_EDGE_HEIGHT)
+            .background(Color.White.copy(alpha = TOP_EDGE_ALPHA)),
+    )
 }
 
 @Composable
@@ -256,6 +261,7 @@ private fun BoxScope.PlayFabIcon(
     contentColor: Color,
     moved: Boolean,
     translation: Offset,
+    iconSize: Dp,
     onClick: () -> Unit,
 ) {
     val modifier = if (moved) {
@@ -280,6 +286,7 @@ private fun BoxScope.PlayFabIcon(
             contentDescription = stringResource(if (playing) Res.string.pause else Res.string.play),
             tint = contentColor,
             durationMillis = ICON_MORPH_MILLIS,
+            modifier = Modifier.size(iconSize),
         )
     }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
@@ -315,10 +322,12 @@ private fun rememberMediaPlaybackHeaderState(
 private val FAB_OFFSET = (-28).dp
 private val FAB_RADIUS = 28.dp
 private val FAB_SIZE = 56.dp
+private val COLLAPSED_ICON_SIZE = 24.dp
+private val PLAY_ICON_SIZE = 36.dp
 private val FAB_ELEVATION = 6.dp
 private val REVEAL_SHADOW_ELEVATION = 2.dp
-private val FAB_TARGET_TOP = 48.dp
-private val REVEAL_BOTTOM_GAP = 36.dp
+private val FAB_TARGET_TOP = 56.dp
+private val REVEAL_BOTTOM_GAP = 48.dp
 private val FAB_TRAILING_MARGIN = 16.dp
 
 // Bottom of the volume row plus REVEAL_BOTTOM_GAP.
@@ -329,3 +338,7 @@ private val BAND_BOTTOM_EXTRA = 64.dp
 
 // The progress strip is the reveal color tinted with a little of the content color.
 private const val PROGRESS_CONTENT_ALPHA = 0.12f
+
+// Bright edge separating the header band from the cover.
+private val TOP_EDGE_HEIGHT = 1.dp
+private const val TOP_EDGE_ALPHA = 0.12f

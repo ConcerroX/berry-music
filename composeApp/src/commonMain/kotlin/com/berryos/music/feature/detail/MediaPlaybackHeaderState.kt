@@ -42,6 +42,7 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
     var collapsing by mutableStateOf(false)
         private set
     val fabMoveProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val iconScaleProgress = Animatable(if (initiallyExpanded) 1f else 0f)
     val controlsProgress = Animatable(if (initiallyExpanded) 1f else 0f)
     val volumeProgress = Animatable(if (initiallyExpanded) 1f else 0f)
     val topStripProgress = Animatable(if (initiallyExpanded) 1f else 0f)
@@ -59,6 +60,7 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         onPlay()
         scope.launch {
             launch { animateFabMove() }
+            launch { animateIconScale() }
             launch { revealControls() }
             launch { animateVolume() }
             launch { animateTopStrip() }
@@ -77,6 +79,7 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         revealed = false
         containerVisible = false
         scope.launch {
+            launch { iconScaleProgress.animateTo(0f, tween(REVEAL_MILLIS, easing = FastOutLinearInEasing)) }
             launch { controlsProgress.animateTo(0f, tween(REVEAL_MILLIS, easing = FastOutLinearInEasing)) }
             launch { volumeProgress.animateTo(0f, tween(VOLUME_FADE_MILLIS, easing = FastOutLinearInEasing)) }
             launch { topStripProgress.animateTo(0f, tween(TOP_STRIP_MILLIS, easing = FastOutLinearInEasing)) }
@@ -119,6 +122,15 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         delay(REVEAL_START_MILLIS.toLong())
         revealed = true
         controlsProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(REVEAL_MILLIS, easing = LinearOutSlowInEasing),
+        )
+    }
+
+    /** The FAB icon grows together with the circular reveal. */
+    private suspend fun animateIconScale() {
+        delay(REVEAL_START_MILLIS.toLong())
+        iconScaleProgress.animateTo(
             targetValue = 1f,
             animationSpec = tween(REVEAL_MILLIS, easing = LinearOutSlowInEasing),
         )

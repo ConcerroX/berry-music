@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -49,35 +51,46 @@ fun MediaDetailScreen(
     actions: AppActions,
 ) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
+    val pageBackground = coverColors.colors?.background ?: MaterialTheme.colors.surface
     val listState = remember(playbackSource) { LazyListState() }
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        item {
-            MediaImageHeader(coverUrl, coverColors::onImage)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(pageBackground),
+    ) {
+        MediaImageHeader(coverUrl, coverColors::onImage)
+        // Reset the header state when the sheet swaps to another collection.
+        key(playbackSource) {
+            MediaPlaybackHeader(
+                title = title,
+                subtitle = subtitle,
+                colors = coverColors.colors,
+                onPlay = {
+                    if (playbackStatus == PlaybackStatus.Paused) {
+                        actions.togglePlayPause()
+                    } else {
+                        actions.play(tracks, 0, playbackSource)
+                    }
+                },
+                onTogglePlayPause = actions.togglePlayPause,
+                onPrevious = actions.previous,
+                onNext = actions.next,
+                playbackStatus = playbackStatus,
+                collapseOnPause = collapseOnPause,
+            )
         }
-        item {
-            // Reset the header state when the sheet swaps to another collection.
-            key(playbackSource) {
-                MediaPlaybackHeader(
-                    title = title,
-                    subtitle = subtitle,
-                    colors = coverColors.colors,
-                    onPlay = {
-                        if (playbackStatus == PlaybackStatus.Paused) {
-                            actions.togglePlayPause()
-                        } else {
-                            actions.play(tracks, 0, playbackSource)
-                        }
-                    },
-                    onTogglePlayPause = actions.togglePlayPause,
-                    onPrevious = actions.previous,
-                    onNext = actions.next,
-                    playbackStatus = playbackStatus,
-                    collapseOnPause = collapseOnPause,
-                )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(start = 16.dp, end = 16.dp),
+            elevation = 2.dp,
+        ) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                itemsIndexed(tracks) { index, track ->
+                    TrackRow(track, onClick = { actions.play(tracks, index, playbackSource) })
+                }
             }
-        }
-        itemsIndexed(tracks) { index, track ->
-            TrackRow(track, onClick = { actions.play(tracks, index, playbackSource) })
         }
     }
 }

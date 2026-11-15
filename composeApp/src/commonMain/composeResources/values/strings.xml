@@ -28,6 +28,8 @@
     <string name="pause">Pause</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="repeat">Repeat</string>
     <string name="mute">Mute</string>
     <string name="volume_up">Volume up</string>
 

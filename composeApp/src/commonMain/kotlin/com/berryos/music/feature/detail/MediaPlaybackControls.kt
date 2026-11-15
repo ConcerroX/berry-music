@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -24,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.ic_repeat
+import com.berryos.music.resources.ic_shuffle
 import com.berryos.music.resources.ic_skip_next
 import com.berryos.music.resources.ic_skip_previous
 import com.berryos.music.resources.ic_volume_mute
@@ -31,6 +34,8 @@ import com.berryos.music.resources.ic_volume_up
 import com.berryos.music.resources.mute
 import com.berryos.music.resources.next
 import com.berryos.music.resources.previous
+import com.berryos.music.resources.repeat
+import com.berryos.music.resources.shuffle
 import com.berryos.music.resources.volume_up
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -40,17 +45,17 @@ import kotlin.math.roundToInt
 internal val CONTROL_SIZE = 48.dp
 internal val CONTROL_EDGE_MARGIN = 36.dp
 internal val CONTROL_START_GAP = 36.dp
-internal val VOLUME_CENTER_DISTANCE = 48.dp
+internal val VOLUME_CENTER_DISTANCE = 64.dp
 
 internal val VOLUME_ICON_SIZE = 24.dp
+private val CONTROL_ICON_SIZE = 24.dp
 private val SLIDER_GAP = 16.dp
 private val SLIDER_HEIGHT = 48.dp
 
 @Composable
 internal fun MediaPlaybackControls(
     colors: CoverColors?,
-    previousCenter: Offset,
-    nextCenter: Offset,
+    centers: ControlCenters,
     volumeUpCenter: Offset,
     muteCenter: Offset,
     controlsAlpha: Float,
@@ -78,7 +83,7 @@ internal fun MediaPlaybackControls(
                 .matchParentSize()
                 .graphicsLayer { alpha = controlsLayerAlpha },
         ) {
-            PlaybackButtons(previousCenter, nextCenter, half, controlColor, onPrevious, onNext)
+            PlaybackButtons(centers, half, controlColor, onPrevious, onNext)
         }
         Box(
             modifier = Modifier
@@ -113,19 +118,52 @@ internal fun MediaPlaybackControls(
     }
 }
 
+internal data class ControlCenters(
+    val outerLeft: Offset,
+    val previous: Offset,
+    val next: Offset,
+    val outerRight: Offset,
+)
+
+internal fun controlCenters(
+    revealOrigin: Offset,
+    bandWidth: Float,
+    startGap: Float,
+    finalInset: Float,
+    finalY: Float,
+    progress: Float,
+): ControlCenters {
+    val playX = bandWidth / 2f
+    val originLeft = Offset(revealOrigin.x - startGap, revealOrigin.y)
+    val originRight = Offset(revealOrigin.x + startGap, revealOrigin.y)
+    return ControlCenters(
+        outerLeft = lerp(originLeft, Offset(finalInset, finalY), progress),
+        previous = lerp(originLeft, Offset((finalInset + playX) / 2f, finalY), progress),
+        next = lerp(originRight, Offset((bandWidth - finalInset + playX) / 2f, finalY), progress),
+        outerRight = lerp(originRight, Offset(bandWidth - finalInset, finalY), progress),
+    )
+}
+
 @Composable
 private fun PlaybackButtons(
-    previousCenter: Offset,
-    nextCenter: Offset,
+    centers: ControlCenters,
     half: Float,
     tint: Color,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
 ) {
     ControlButton(
+        icon = Res.drawable.ic_repeat,
+        contentDescription = stringResource(Res.string.repeat),
+        center = centers.outerLeft,
+        half = half,
+        tint = tint,
+        onClick = {},
+    )
+    ControlButton(
         icon = Res.drawable.ic_skip_previous,
         contentDescription = stringResource(Res.string.previous),
-        center = previousCenter,
+        center = centers.previous,
         half = half,
         tint = tint,
         onClick = onPrevious,
@@ -133,10 +171,18 @@ private fun PlaybackButtons(
     ControlButton(
         icon = Res.drawable.ic_skip_next,
         contentDescription = stringResource(Res.string.next),
-        center = nextCenter,
+        center = centers.next,
         half = half,
         tint = tint,
         onClick = onNext,
+    )
+    ControlButton(
+        icon = Res.drawable.ic_shuffle,
+        contentDescription = stringResource(Res.string.shuffle),
+        center = centers.outerRight,
+        half = half,
+        tint = tint,
+        onClick = {},
     )
 }
 
@@ -173,6 +219,7 @@ private fun ControlButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             tint = tint,
+            modifier = Modifier.size(CONTROL_ICON_SIZE),
         )
     }
 }
