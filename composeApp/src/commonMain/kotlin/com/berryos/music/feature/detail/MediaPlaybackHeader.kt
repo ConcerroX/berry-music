@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.ripple
@@ -38,7 +37,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import art.rippledesign.compose.rui.RCircularReveal
 import art.rippledesign.compose.rui.RPlayPauseIcon
 import com.berryos.music.core.designsystem.CoverColors
@@ -61,8 +59,9 @@ internal fun MediaPlaybackHeader(
     collapseOnPause: Boolean,
 ) {
     val state = rememberMediaPlaybackHeaderState(playbackStatus, collapseOnPause)
+    // The icon shows the playback object's state; the header phase only controls presentation.
+    val playing = playbackStatus == PlaybackStatus.Playing
     val fabColor = colors?.accentColor ?: MaterialTheme.colors.secondary
-    val fabContentColor = colors?.accentContentColor ?: MaterialTheme.colors.onSecondary
     val density = LocalDensity.current
     val revealOriginY = with(density) { FAB_TARGET_TOP.toPx() }
     val fabStart = with(density) {
@@ -102,20 +101,13 @@ internal fun MediaPlaybackHeader(
             onPrevious = onPrevious,
             onNext = onNext,
         )
-        PlayFabContainer(
-            visible = state.containerVisible,
-            color = fabColor,
-            rippleColor = fabContentColor,
+        PlayFabs(
+            state = state,
+            playing = playing,
+            colors = colors,
             translation = fabTranslation,
-            onClick = { state.start(onPlay) },
-        )
-        PlayFabIcon(
-            playing = state.expanded && playbackStatus == PlaybackStatus.Playing,
-            contentColor = fabContentColor,
-            moved = state.fabArrived,
-            translation = fabTranslation,
-            iconSize = lerp(COLLAPSED_ICON_SIZE, PLAY_ICON_SIZE, state.iconScaleProgress.value),
-            onClick = onTogglePlayPause,
+            onPlay = { state.start(onPlay) },
+            onTogglePlayPause = onTogglePlayPause,
         )
     }
 }
@@ -227,6 +219,7 @@ private fun BoxScope.MediaTitleText(title: String, subtitle: String, colors: Cov
 @Composable
 private fun BoxScope.PlayFabContainer(
     visible: Boolean,
+    enabled: Boolean,
     color: Color,
     rippleColor: Color,
     translation: Offset,
@@ -249,28 +242,53 @@ private fun BoxScope.PlayFabContainer(
             .clickable(
                 interactionSource = interactionSource,
                 indication = ripple(color = rippleColor),
-                enabled = visible,
+                enabled = visible && enabled,
                 onClick = onClick,
             ),
     )
 }
 
 @Composable
-private fun BoxScope.PlayFabIcon(
+private fun BoxScope.PlayFabs(
+    state: MediaPlaybackHeaderState,
     playing: Boolean,
-    contentColor: Color,
-    moved: Boolean,
+    colors: CoverColors?,
     translation: Offset,
-    iconSize: Dp,
-    onClick: () -> Unit,
+    onPlay: () -> Unit,
+    onTogglePlayPause: () -> Unit,
 ) {
-    val modifier = if (moved) {
-        Modifier
-            .align(Alignment.TopCenter)
-            .offset(y = FAB_TARGET_TOP - FAB_RADIUS)
-            .size(FAB_SIZE)
-    } else {
-        Modifier
+    val color = colors?.accentColor ?: MaterialTheme.colors.secondary
+    val contentColor = colors?.accentContentColor ?: MaterialTheme.colors.onSecondary
+    PlayFabContainer(
+        visible = state.containerVisible,
+        enabled = state.phase == HeaderPhase.Collapsed,
+        color = color,
+        rippleColor = contentColor,
+        translation = translation,
+        onClick = onPlay,
+    )
+    PlayFabIcon(
+        playing = playing,
+        contentColor = contentColor,
+        moved = state.fabArrived,
+        translation = translation,
+    )
+    if (state.phase != HeaderPhase.Collapsed) {
+        PlayFabExpanded(
+            playing = playing,
+            background = contentColor,
+            contentColor = color,
+            state = state,
+            onClick = onTogglePlayPause,
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.PlayFabIcon(playing: Boolean, contentColor: Color, moved: Boolean, translation: Offset) {
+    if (moved) return
+    Box(
+        modifier = Modifier
             .align(Alignment.TopEnd)
             .padding(end = FAB_TRAILING_MARGIN)
             .offset(y = FAB_OFFSET)
@@ -278,23 +296,61 @@ private fun BoxScope.PlayFabIcon(
             .graphicsLayer {
                 translationX = translation.x
                 translationY = translation.y
-            }
-    }
-    val icon: @Composable () -> Unit = {
+            },
+        contentAlignment = Alignment.Center,
+    ) {
         RPlayPauseIcon(
             playing = playing,
             contentDescription = stringResource(if (playing) Res.string.pause else Res.string.play),
             tint = contentColor,
             durationMillis = ICON_MORPH_MILLIS,
-            modifier = Modifier.size(iconSize),
         )
     }
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (moved) {
-            IconButton(onClick = onClick) { icon() }
-        } else {
-            icon()
-        }
+}
+
+@Composable
+private fun BoxScope.PlayFabExpanded(
+    playing: Boolean,
+    background: Color,
+    contentColor: Color,
+    state: MediaPlaybackHeaderState,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val playFabVisible = state.playFabAlpha.value > 0.5f
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .offset(y = FAB_TARGET_TOP - FAB_RADIUS)
+            .size(FAB_SIZE)
+            .graphicsLayer {
+                scaleX = state.playFabScale.value
+                scaleY = state.playFabScale.value
+                alpha = state.playFabAlpha.value
+            }
+            .shadow(elevation = FAB_ELEVATION, shape = CircleShape)
+            .background(color = background, shape = CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = ripple(color = contentColor),
+                enabled = state.phase == HeaderPhase.Expanded && playFabVisible,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        RPlayPauseIcon(
+            playing = playing,
+            contentDescription = stringResource(if (playing) Res.string.pause else Res.string.play),
+            tint = contentColor,
+            durationMillis = ICON_MORPH_MILLIS,
+            modifier = Modifier
+                .size(PLAY_ICON_SIZE)
+                .graphicsLayer {
+                    val iconScale = state.playFabIconScale.value
+                    scaleX = iconScale
+                    scaleY = iconScale
+                },
+        )
     }
 }
 
@@ -322,8 +378,7 @@ private fun rememberMediaPlaybackHeaderState(
 private val FAB_OFFSET = (-28).dp
 private val FAB_RADIUS = 28.dp
 private val FAB_SIZE = 56.dp
-private val COLLAPSED_ICON_SIZE = 24.dp
-private val PLAY_ICON_SIZE = 36.dp
+private val PLAY_ICON_SIZE = 24.dp
 private val FAB_ELEVATION = 6.dp
 private val REVEAL_SHADOW_ELEVATION = 2.dp
 private val FAB_TARGET_TOP = 56.dp

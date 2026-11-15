@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.getValue
@@ -16,6 +17,9 @@ import kotlinx.coroutines.launch
 
 /** [FastOutSlowInEasing] sampled in reverse time, i.e. the same curve played backwards. */
 private val ReverseStandardEasing = Easing { fraction -> 1f - FastOutSlowInEasing.transform(1f - fraction) }
+
+/** Presentation phase of the playback header. Interactivity keys off this, not raw booleans. */
+internal enum class HeaderPhase { Collapsed, Expanded, Collapsing }
 
 /**
  * Orchestrates the media detail playback header transition.
@@ -32,6 +36,13 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
     var expanded by mutableStateOf(initiallyExpanded)
         private set
 
+    val phase: HeaderPhase
+        get() = when {
+            collapsing -> HeaderPhase.Collapsing
+            expanded -> HeaderPhase.Expanded
+            else -> HeaderPhase.Collapsed
+        }
+
     // Kept separate from fabArrived so the FAB shadow returns only after the reverse reveal finishes.
     var containerVisible by mutableStateOf(!initiallyExpanded)
         private set
@@ -42,7 +53,9 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
     var collapsing by mutableStateOf(false)
         private set
     val fabMoveProgress = Animatable(if (initiallyExpanded) 1f else 0f)
-    val iconScaleProgress = Animatable(if (initiallyExpanded) 1f else 0f)
+    val playFabScale = Animatable(if (initiallyExpanded) 1f else 0f)
+    val playFabAlpha = Animatable(if (initiallyExpanded) 1f else 0f)
+    val playFabIconScale = Animatable(if (initiallyExpanded) 1f else 0f)
     val controlsProgress = Animatable(if (initiallyExpanded) 1f else 0f)
     val volumeProgress = Animatable(if (initiallyExpanded) 1f else 0f)
     val topStripProgress = Animatable(if (initiallyExpanded) 1f else 0f)
@@ -60,7 +73,7 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         onPlay()
         scope.launch {
             launch { animateFabMove() }
-            launch { animateIconScale() }
+            launch { animatePlayFabIn() }
             launch { revealControls() }
             launch { animateVolume() }
             launch { animateTopStrip() }
@@ -79,7 +92,20 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         revealed = false
         containerVisible = false
         scope.launch {
-            launch { iconScaleProgress.animateTo(0f, tween(REVEAL_MILLIS, easing = FastOutLinearInEasing)) }
+            launch { playFabScale.animateTo(0f, tween(PLAY_FAB_HIDE_SCALE_MILLIS, easing = FastOutLinearInEasing)) }
+            launch {
+                playFabAlpha.animateTo(
+                    0f,
+                    tween(
+                        PLAY_FAB_HIDE_ALPHA_MILLIS,
+                        delayMillis = PLAY_FAB_HIDE_ALPHA_DELAY_MILLIS,
+                        easing = LinearEasing,
+                    ),
+                )
+            }
+            launch {
+                playFabIconScale.animateTo(0f, tween(PLAY_FAB_HIDE_ICON_MILLIS, easing = FastOutLinearInEasing))
+            }
             launch { controlsProgress.animateTo(0f, tween(REVEAL_MILLIS, easing = FastOutLinearInEasing)) }
             launch { volumeProgress.animateTo(0f, tween(VOLUME_FADE_MILLIS, easing = FastOutLinearInEasing)) }
             launch { topStripProgress.animateTo(0f, tween(TOP_STRIP_MILLIS, easing = FastOutLinearInEasing)) }
@@ -127,13 +153,38 @@ internal class MediaPlaybackHeaderState(private val scope: CoroutineScope, initi
         )
     }
 
-    /** The FAB icon grows together with the circular reveal. */
-    private suspend fun animateIconScale() {
+    /**
+     * Opens the expanded play FAB, following MDC's `mtrl_fab_show_motion_spec`: scale with
+     * LinearOutSlowIn, a quick 15ms fade, and a separate icon scale that starts later.
+     */
+    private suspend fun animatePlayFabIn() {
         delay(REVEAL_START_MILLIS.toLong())
-        iconScaleProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(REVEAL_MILLIS, easing = LinearOutSlowInEasing),
-        )
+        scope.launch {
+            playFabScale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(PLAY_FAB_SHOW_SCALE_MILLIS, easing = LinearOutSlowInEasing),
+            )
+        }
+        scope.launch {
+            playFabAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    PLAY_FAB_SHOW_ALPHA_MILLIS,
+                    delayMillis = PLAY_FAB_SHOW_ALPHA_DELAY_MILLIS,
+                    easing = LinearEasing,
+                ),
+            )
+        }
+        scope.launch {
+            playFabIconScale.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(
+                    PLAY_FAB_SHOW_ICON_MILLIS,
+                    delayMillis = PLAY_FAB_SHOW_ICON_DELAY_MILLIS,
+                    easing = LinearOutSlowInEasing,
+                ),
+            )
+        }
     }
 
     private suspend fun animateVolume() {
@@ -198,3 +249,14 @@ internal const val BOTTOM_TEXT_START_MILLIS = 175
 internal const val BOTTOM_TEXT_MILLIS = 225
 internal const val SHADOW_START_MILLIS = 300
 internal const val SHADOW_FADE_MILLIS = 100
+
+// MDC mtrl_fab_show_motion_spec / mtrl_fab_hide_motion_spec, relative to the FAB itself.
+internal const val PLAY_FAB_SHOW_SCALE_MILLIS = 330
+internal const val PLAY_FAB_SHOW_ALPHA_DELAY_MILLIS = 30
+internal const val PLAY_FAB_SHOW_ALPHA_MILLIS = 15
+internal const val PLAY_FAB_SHOW_ICON_DELAY_MILLIS = 90
+internal const val PLAY_FAB_SHOW_ICON_MILLIS = 240
+internal const val PLAY_FAB_HIDE_SCALE_MILLIS = 135
+internal const val PLAY_FAB_HIDE_ALPHA_DELAY_MILLIS = 150
+internal const val PLAY_FAB_HIDE_ALPHA_MILLIS = 15
+internal const val PLAY_FAB_HIDE_ICON_MILLIS = 180
