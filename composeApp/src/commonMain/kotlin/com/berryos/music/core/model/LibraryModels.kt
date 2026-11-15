@@ -1,7 +1,13 @@
 package com.berryos.music.core.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 sealed interface SourceKey {
+    @Serializable
     data object Local : SourceKey
+
+    @Serializable
     data class Subsonic(val serverId: String) : SourceKey
 }
 

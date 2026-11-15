@@ -2,6 +2,7 @@ package com.berryos.music.app.navigation
 
 import androidx.navigation3.runtime.NavKey
 import androidx.savedstate.serialization.SavedStateConfiguration
+import com.berryos.music.core.model.SourceKey
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
@@ -33,10 +34,10 @@ data object SearchRoute : AppRoute
 data object SettingsRoute : AppRoute
 
 @Serializable
-data class AlbumRoute(val albumId: String) : AppRoute
+data class AlbumRoute(val source: SourceKey, val albumId: String) : AppRoute
 
 @Serializable
-data class ArtistRoute(val artistId: String) : AppRoute
+data class ArtistRoute(val source: SourceKey, val artistId: String) : AppRoute
 
 @Serializable
 data class PlaylistRoute(val playlistId: String) : AppRoute

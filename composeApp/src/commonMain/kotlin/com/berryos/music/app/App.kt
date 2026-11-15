@@ -1,12 +1,26 @@
+@file:Suppress("TooManyFunctions")
+
 package com.berryos.music.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material.DrawerValue
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
@@ -26,6 +40,7 @@ import androidx.compose.material.rememberDrawerState
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -34,16 +49,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.Scene
+import androidx.navigation3.scene.SinglePaneSceneStrategy
+import androidx.navigation3.scene.rememberNavigationEventState
+import androidx.navigation3.scene.rememberSceneState
 import androidx.navigation3.ui.NavDisplay
+import androidx.navigation3.ui.defaultPopTransitionSpec
+import androidx.navigation3.ui.defaultPredictivePopTransitionSpec
+import androidx.navigation3.ui.defaultTransitionSpec
+import androidx.navigationevent.NavigationEventTransitionState
+import androidx.navigationevent.compose.NavigationEventHandler
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
 import art.rippledesign.compose.rui.RTopAppBar
@@ -79,6 +111,7 @@ import com.berryos.music.core.designsystem.rememberLoadedCoverColors
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
 import com.berryos.music.core.model.album
+import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackController
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.feature.album.AlbumScreen
@@ -180,6 +213,13 @@ internal data class TabItem(
     val backStack: NavBackStack<NavKey>,
 )
 
+private data class ChromeMetrics(
+    val topBarHeight: Dp,
+    val bottomBarHeight: Dp,
+    val miniPlayerHeight: Dp,
+    val railWidth: Dp,
+)
+
 @Suppress("LongMethod")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -231,10 +271,24 @@ private fun AppShell(
                 if (sheetVisible) {
                     when (val target = nowPlayingTarget) {
                         is NowPlayingTarget.Album ->
-                            AlbumScreen(target.albumId, libraryState, actions, playbackState, collapseOnPause)
+                            AlbumScreen(
+                                target.source,
+                                target.albumId,
+                                libraryState,
+                                actions,
+                                playbackState,
+                                collapseOnPause,
+                            )
 
                         is NowPlayingTarget.Artist ->
-                            ArtistScreen(target.artistId, libraryState, actions, playbackState, collapseOnPause)
+                            ArtistScreen(
+                                target.source,
+                                target.artistId,
+                                libraryState,
+                                actions,
+                                playbackState,
+                                collapseOnPause,
+                            )
 
                         is NowPlayingTarget.Playlist -> PlaylistScreen(target.playlistId)
 
@@ -306,11 +360,11 @@ private fun AppChrome(
     val isDetailRoute = route is AlbumRoute || route is ArtistRoute
     val title = routeTitle(route)
     val detailCoverUrl = when (route) {
-        is AlbumRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.albums
-            ?.firstOrNull { it.id == route.albumId }?.coverUrl
+        is AlbumRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.album(route.source, route.albumId)
+            ?.coverUrl
 
-        is ArtistRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.artists
-            ?.firstOrNull { it.id == route.artistId }?.coverUrl
+        is ArtistRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.artist(route.source, route.artistId)
+            ?.coverUrl
 
         else -> null
     }
@@ -320,12 +374,28 @@ private fun AppChrome(
         val fallbackColors = rememberDefaultCoverColors()
         detailCoverUrl?.let(::cachedCoverColors) ?: fallbackColors
     }
-    val topBarContentColor = detailColors?.contentColor
     var showCoverPalette by rememberSaveable { mutableStateOf(false) }
     val onBack = if (isRoot) null else actions.back
-    val showMiniPlayer = playbackState.currentTrack != null && !isDetailRoute
+    val showMiniPlayer = playbackState.currentTrack != null
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val drawerScope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val statusBarTop = WindowInsets.statusBars.getTop(density)
+    val navigationBarBottom = WindowInsets.navigationBars.getBottom(density)
+    var topBarHeight by remember {
+        mutableStateOf(56.dp + with(density) { statusBarTop.toDp() })
+    }
+    var bottomBarHeight by remember {
+        mutableStateOf(56.dp + with(density) { navigationBarBottom.toDp() })
+    }
+    var miniPlayerHeight by remember { mutableStateOf(64.dp) }
+    var railWidth by remember { mutableStateOf(72.dp) }
+    val chromeMetrics = ChromeMetrics(
+        topBarHeight = topBarHeight,
+        bottomBarHeight = bottomBarHeight,
+        miniPlayerHeight = miniPlayerHeight,
+        railWidth = railWidth,
+    )
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
         val drawerEnabled = isRoot && compact
@@ -343,115 +413,148 @@ private fun AppChrome(
                 }
             },
         ) { _ ->
-            if (compact) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    if (isDetailRoute) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            TabContent(
-                                tabs = tabs,
-                                selectedIndex = selectedTabIndex,
-                                actions = actions,
-                                libraryState = libraryState,
-                                playbackState = playbackState,
-                                settings = settings,
-                                collapseOnPause = collapseOnPause,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                            AppTopBar(
-                                null,
-                                onBack,
-                                openDrawer,
-                                transparent = true,
-                                contentColor = topBarContentColor,
-                                onCoverPalette = { showCoverPalette = true },
-                            )
-                        }
-                    } else {
-                        AppTopBar(title, onBack, openDrawer)
-                        TabContent(
-                            tabs = tabs,
-                            selectedIndex = selectedTabIndex,
-                            actions = actions,
-                            libraryState = libraryState,
-                            playbackState = playbackState,
-                            settings = settings,
-                            collapseOnPause = collapseOnPause,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    if (showMiniPlayer) {
-                        MiniPlayer(playbackState, onOpenNowPlaying, actions.togglePlayPause, actions.next)
-                    }
-                    if (isRoot) {
-                        RBottomNavigation(itemCount = tabs.size) {
-                            tabs.forEachIndexed { index, tab ->
-                                RBottomNavigationItem(
-                                    selected = index == selectedTabIndex,
-                                    onClick = { onSelectTab(index) },
-                                    icon = { TabIcon(tab, index == selectedTabIndex) },
-                                    label = { Text(stringResource(tab.label)) },
-                                )
-                            }
-                        }
-                    }
+            Box(modifier = Modifier.fillMaxSize()) {
+                val drawerAction: (() -> Unit)? = if (compact) {
+                    { drawerScope.launch { scaffoldState.drawerState.open() } }
+                } else {
+                    null
                 }
-            } else {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    if (isRoot) {
-                        NavigationRail(windowInsets = NavigationRailDefaults.windowInsets) {
-                            tabs.forEachIndexed { index, tab ->
-                                NavigationRailItem(
-                                    selected = index == selectedTabIndex,
-                                    onClick = { onSelectTab(index) },
-                                    icon = { TabIcon(tab, index == selectedTabIndex) },
-                                    label = { Text(stringResource(tab.label)) },
-                                )
-                            }
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        if (isDetailRoute) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                TabContent(
-                                    tabs = tabs,
-                                    selectedIndex = selectedTabIndex,
-                                    actions = actions,
-                                    libraryState = libraryState,
-                                    playbackState = playbackState,
-                                    settings = settings,
-                                    collapseOnPause = collapseOnPause,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                                AppTopBar(
-                                    null,
-                                    onBack,
-                                    null,
-                                    transparent = true,
-                                    contentColor = topBarContentColor,
-                                    onCoverPalette = { showCoverPalette = true },
-                                )
-                            }
-                        } else {
-                            AppTopBar(title, onBack, null)
-                            TabContent(
-                                tabs = tabs,
-                                selectedIndex = selectedTabIndex,
-                                actions = actions,
-                                libraryState = libraryState,
-                                playbackState = playbackState,
-                                settings = settings,
-                                collapseOnPause = collapseOnPause,
-                                modifier = Modifier.weight(1f),
+                ChromeUnderlay(
+                    compact = compact,
+                    isRoot = isRoot,
+                    isDetailRoute = isDetailRoute,
+                    tabs = tabs,
+                    selectedTabIndex = selectedTabIndex,
+                    title = if (isDetailRoute) routeTitle(selectedTab.backStack.firstOrNull()) else title,
+                    onBack = if (isDetailRoute) null else onBack,
+                    openDrawer = if (isDetailRoute) drawerAction else openDrawer,
+                    showMiniPlayer = showMiniPlayer,
+                    playbackState = playbackState,
+                    onOpenNowPlaying = onOpenNowPlaying,
+                    actions = actions,
+                    railWidth = railWidth,
+                    onTopBarSize = { topBarHeight = with(density) { it.height.toDp() } },
+                    onBottomBarSize = { bottomBarHeight = with(density) { it.height.toDp() } },
+                    onMiniPlayerSize = { miniPlayerHeight = with(density) { it.height.toDp() } },
+                    onRailSize = { railWidth = with(density) { it.width.toDp() } },
+                    onSelectTab = onSelectTab,
+                )
+                if (isDetailRoute) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent().changes.forEach { it.consume() }
+                                    }
+                                }
+                            },
+                    )
+                }
+                TabContent(
+                    tabs = tabs,
+                    selectedIndex = selectedTabIndex,
+                    actions = actions,
+                    libraryState = libraryState,
+                    playbackState = playbackState,
+                    settings = settings,
+                    collapseOnPause = collapseOnPause,
+                    chromeMetrics = chromeMetrics,
+                    compact = compact,
+                    showMiniPlayer = showMiniPlayer,
+                    onCoverPalette = { showCoverPalette = true },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        CoverPaletteHost(showCoverPalette, detailColors) { showCoverPalette = false }
+    }
+}
+
+@Suppress("LongMethod")
+@Composable
+private fun ChromeUnderlay(
+    compact: Boolean,
+    isRoot: Boolean,
+    isDetailRoute: Boolean,
+    tabs: List<TabItem>,
+    selectedTabIndex: Int,
+    title: String,
+    onBack: (() -> Unit)?,
+    openDrawer: (() -> Unit)?,
+    showMiniPlayer: Boolean,
+    playbackState: PlaybackState,
+    onOpenNowPlaying: () -> Unit,
+    actions: AppActions,
+    railWidth: Dp,
+    onTopBarSize: (IntSize) -> Unit,
+    onBottomBarSize: (IntSize) -> Unit,
+    onMiniPlayerSize: (IntSize) -> Unit,
+    onRailSize: (IntSize) -> Unit,
+    onSelectTab: (Int) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(if (isDetailRoute) Modifier.clearAndSetSemantics { } else Modifier),
+    ) {
+        val contentStart = if (!compact && isRoot) railWidth else 0.dp
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth()
+                .padding(start = contentStart)
+                .onSizeChanged(onTopBarSize),
+        ) {
+            AppTopBar(title, onBack, openDrawer)
+        }
+        if (!compact && (isRoot || isDetailRoute)) {
+            NavigationRail(
+                windowInsets = NavigationRailDefaults.windowInsets,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .onSizeChanged(onRailSize),
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    NavigationRailItem(
+                        selected = index == selectedTabIndex,
+                        onClick = { if (isRoot) onSelectTab(index) },
+                        enabled = isRoot,
+                        icon = { TabIcon(tab, index == selectedTabIndex) },
+                        label = { Text(stringResource(tab.label)) },
+                    )
+                }
+            }
+        }
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(start = contentStart),
+        ) {
+            if (showMiniPlayer) {
+                Box(Modifier.onSizeChanged(onMiniPlayerSize)) {
+                    MiniPlayer(playbackState, onOpenNowPlaying, actions.togglePlayPause, actions.next)
+                }
+            }
+            if (compact && (isRoot || isDetailRoute)) {
+                Box(Modifier.onSizeChanged(onBottomBarSize)) {
+                    RBottomNavigation(itemCount = tabs.size) {
+                        tabs.forEachIndexed { index, tab ->
+                            RBottomNavigationItem(
+                                selected = index == selectedTabIndex,
+                                onClick = { if (isRoot) onSelectTab(index) },
+                                enabled = isRoot,
+                                icon = { TabIcon(tab, index == selectedTabIndex) },
+                                label = { Text(stringResource(tab.label)) },
                             )
-                        }
-                        if (showMiniPlayer) {
-                            MiniPlayer(playbackState, onOpenNowPlaying, actions.togglePlayPause, actions.next)
                         }
                     }
                 }
             }
         }
-        CoverPaletteHost(showCoverPalette, detailColors) { showCoverPalette = false }
     }
 }
 
@@ -588,6 +691,10 @@ private fun TabContent(
     playbackState: PlaybackState,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
+    chromeMetrics: ChromeMetrics,
+    compact: Boolean,
+    showMiniPlayer: Boolean,
+    onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedContent(
@@ -602,11 +709,16 @@ private fun TabContent(
             playbackState,
             settings,
             collapseOnPause,
+            chromeMetrics,
+            compact,
+            showMiniPlayer,
+            onCoverPalette,
             Modifier.fillMaxSize(),
         )
     }
 }
 
+@Suppress("LongMethod")
 @Composable
 private fun AppNavDisplay(
     backStack: NavBackStack<NavKey>,
@@ -615,38 +727,191 @@ private fun AppNavDisplay(
     playbackState: PlaybackState,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
+    chromeMetrics: ChromeMetrics,
+    compact: Boolean,
+    showMiniPlayer: Boolean,
+    onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    NavDisplay(
+    val controller = rememberContainerTransformController()
+    val rootPadding = PaddingValues(
+        start = if (!compact) chromeMetrics.railWidth else 0.dp,
+        top = chromeMetrics.topBarHeight,
+        end = 0.dp,
+        bottom = (if (compact) chromeMetrics.bottomBarHeight else 0.dp) +
+            (if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp),
+    )
+    val pushedPadding = PaddingValues(
+        start = 0.dp,
+        top = chromeMetrics.topBarHeight,
+        end = 0.dp,
+        bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
+    )
+    val entries = rememberDecoratedNavEntries(
         backStack = backStack,
-        onBack = actions.back,
-        modifier = modifier,
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
         ),
         entryProvider = entryProvider {
-            entry<HomeRoute> { HomeScreen(actions, libraryState) }
-            entry<AlbumsRoute> { AlbumsScreen(libraryState, actions) }
-            entry<SongsRoute> { SongsScreen(libraryState, actions) }
-            entry<PlaylistsRoute> { PlaylistsScreen(actions) }
-            entry<ArtistsRoute> { ArtistsScreen(libraryState, actions) }
-            entry<SearchRoute> { SearchScreen(actions) }
-            entry<SettingsRoute> { SettingsScreen(actions) }
-            entry<AlbumRoute> { route ->
-                AlbumScreen(route.albumId, libraryState, actions, playbackState, collapseOnPause)
+            entry<HomeRoute> { PaddedScreen(rootPadding) { HomeScreen(actions, libraryState) } }
+            entry<AlbumsRoute>(
+                metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceAlbums),
+            ) {
+                PaddedScreen(rootPadding) { AlbumsScreen(libraryState, actions, controller) }
             }
-            entry<ArtistRoute> { entry ->
-                ArtistScreen(entry.artistId, libraryState, actions, playbackState, collapseOnPause)
+            entry<SongsRoute> { PaddedScreen(rootPadding) { SongsScreen(libraryState, actions) } }
+            entry<PlaylistsRoute> { PaddedScreen(rootPadding) { PlaylistsScreen(actions) } }
+            entry<ArtistsRoute>(
+                metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceArtists),
+            ) {
+                PaddedScreen(rootPadding) { ArtistsScreen(libraryState, actions, controller) }
             }
-            entry<PlaylistRoute> { route -> PlaylistScreen(route.playlistId) }
-            entry<FolderRoute> { route -> FolderScreen(route.folderId) }
-            entry<AppearanceRoute> { AppearanceScreen(settings) }
-            entry<PlaybackSettingsRoute> { PlaybackSettingsScreen() }
-            entry<LibrarySettingsRoute> { LibrarySettingsScreen() }
-            entry<ServersRoute> { ServersScreen(actions) }
-            entry<ServerEditRoute> { route -> ServerEditScreen(route.serverId) }
-            entry<AboutRoute> { AboutScreen() }
+            entry<SearchRoute> { PaddedScreen(pushedPadding) { SearchScreen(actions) } }
+            entry<SettingsRoute> { PaddedScreen(pushedPadding) { SettingsScreen(actions) } }
+            entry<AlbumRoute>(
+                metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetAlbum),
+            ) { route ->
+                ContainerTransformEntry(
+                    key = albumTransformKey(route.source, route.albumId),
+                    controller = controller,
+                ) {
+                    AlbumScreen(
+                        route.source,
+                        route.albumId,
+                        libraryState,
+                        actions,
+                        playbackState,
+                        collapseOnPause,
+                        topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
+                    )
+                }
+            }
+            entry<ArtistRoute>(
+                metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetArtist),
+            ) { route ->
+                ContainerTransformEntry(
+                    key = artistTransformKey(route.source, route.artistId),
+                    controller = controller,
+                ) {
+                    ArtistScreen(
+                        route.source,
+                        route.artistId,
+                        libraryState,
+                        actions,
+                        playbackState,
+                        collapseOnPause,
+                        topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
+                    )
+                }
+            }
+            entry<PlaylistRoute> { route -> PaddedScreen(pushedPadding) { PlaylistScreen(route.playlistId) } }
+            entry<FolderRoute> { route -> PaddedScreen(pushedPadding) { FolderScreen(route.folderId) } }
+            entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }
+            entry<PlaybackSettingsRoute> { PaddedScreen(pushedPadding) { PlaybackSettingsScreen() } }
+            entry<LibrarySettingsRoute> { PaddedScreen(pushedPadding) { LibrarySettingsScreen() } }
+            entry<ServersRoute> { PaddedScreen(pushedPadding) { ServersScreen(actions) } }
+            entry<ServerEditRoute> { route ->
+                PaddedScreen(pushedPadding) { ServerEditScreen(route.serverId) }
+            }
+            entry<AboutRoute> { PaddedScreen(pushedPadding) { AboutScreen() } }
         },
+    )
+    val sceneState = rememberSceneState(
+        entries = entries,
+        sceneStrategies = listOf(SinglePaneSceneStrategy()),
+        sceneDecoratorStrategies = emptyList(),
+        sharedTransitionScope = null,
+        onBack = actions.back,
+    )
+    val navigationEventState = rememberNavigationEventState(sceneState)
+    val backBlockedByTransition = controller.transitionRunning &&
+        !controller.transformEntering &&
+        navigationEventState.transitionState !is NavigationEventTransitionState.InProgress
+    NavigationEventHandler(
+        state = navigationEventState,
+        isBackEnabled = sceneState.currentScene.previousEntries.isNotEmpty() && !backBlockedByTransition,
+        onBackCancelled = controller::notifyGestureCancelled,
+        onBackCompleted = actions.back,
+    )
+    Box(modifier = modifier) {
+        CompositionLocalProvider(LocalContainerTransformNavigationEventState provides navigationEventState) {
+            NavDisplay(
+                sceneState = sceneState,
+                navigationEventState = navigationEventState,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = {
+                    if (isContainerTransformPair(initialState, targetState)) {
+                        noOpContainerTransition(ContainerTransformSpec.enterDurationMillis)
+                    } else {
+                        defaultTransitionSpec<NavKey>().invoke(this)
+                    }
+                },
+                popTransitionSpec = {
+                    if (isContainerTransformPair(initialState, targetState)) {
+                        noOpContainerTransition(ContainerTransformSpec.returnDurationMillis)
+                    } else {
+                        defaultPopTransitionSpec<NavKey>().invoke(this)
+                    }
+                },
+                predictivePopTransitionSpec = { swipeEdge ->
+                    if (isContainerTransformPair(initialState, targetState)) {
+                        noOpContainerTransition(ContainerTransformSpec.returnDurationMillis)
+                    } else {
+                        defaultPredictivePopTransitionSpec<NavKey>().invoke(this, swipeEdge)
+                    }
+                },
+            )
+        }
+        if (controller.transitionRunning) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent().changes.forEach { it.consume() }
+                            }
+                        }
+                    },
+            )
+        }
+    }
+}
+
+private const val CONTAINER_TRANSFORM_TAG_KEY = "berry.containerTransformTag"
+
+private enum class ContainerTransformTag { SourceAlbums, SourceArtists, TargetAlbum, TargetArtist }
+
+private fun isContainerTransformPair(initial: Scene<NavKey>, target: Scene<NavKey>): Boolean {
+    val from = initial.entries.lastOrNull()?.metadata?.get(CONTAINER_TRANSFORM_TAG_KEY)
+    val to = target.entries.lastOrNull()?.metadata?.get(CONTAINER_TRANSFORM_TAG_KEY)
+    val albumsPair = (from == ContainerTransformTag.SourceAlbums && to == ContainerTransformTag.TargetAlbum) ||
+        (from == ContainerTransformTag.TargetAlbum && to == ContainerTransformTag.SourceAlbums)
+    val artistsPair = (from == ContainerTransformTag.SourceArtists && to == ContainerTransformTag.TargetArtist) ||
+        (from == ContainerTransformTag.TargetArtist && to == ContainerTransformTag.SourceArtists)
+    return albumsPair || artistsPair
+}
+
+private fun noOpContainerTransition(durationMillis: Int): ContentTransform =
+    fadeIn(tween(durationMillis, easing = LinearEasing), initialAlpha = 1f) togetherWith
+        fadeOut(tween(durationMillis, easing = LinearEasing), targetAlpha = 1f)
+
+@Composable
+private fun PaddedScreen(padding: PaddingValues, content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().padding(padding)) {
+        content()
+    }
+}
+
+@Composable
+private fun DetailTopBar(actions: AppActions, contentColor: Color?, onCoverPalette: () -> Unit) {
+    AppTopBar(
+        title = null,
+        onBack = actions.back,
+        onMenu = null,
+        transparent = true,
+        contentColor = contentColor,
+        onCoverPalette = onCoverPalette,
     )
 }

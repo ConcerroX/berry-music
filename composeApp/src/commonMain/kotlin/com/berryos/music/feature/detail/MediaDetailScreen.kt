@@ -49,49 +49,53 @@ fun MediaDetailScreen(
     playbackStatus: PlaybackStatus,
     collapseOnPause: Boolean,
     actions: AppActions,
+    topBar: @Composable (Color?) -> Unit = {},
 ) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
     val pageBackground = coverColors.colors?.background ?: MaterialTheme.colors.surface
     val listState = remember(playbackSource) { LazyListState() }
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(pageBackground),
     ) {
-        MediaImageHeader(coverUrl, coverColors::onImage)
-        // Reset the header state when the sheet swaps to another collection.
-        key(playbackSource) {
-            MediaPlaybackHeader(
-                title = title,
-                subtitle = subtitle,
-                colors = coverColors.colors,
-                onPlay = {
-                    if (playbackStatus == PlaybackStatus.Paused) {
-                        actions.togglePlayPause()
-                    } else {
-                        actions.play(tracks, 0, playbackSource)
+        Column(modifier = Modifier.fillMaxSize()) {
+            MediaImageHeader(coverUrl, coverColors::onImage)
+            // Reset the header state when the sheet swaps to another collection.
+            key(playbackSource) {
+                MediaPlaybackHeader(
+                    title = title,
+                    subtitle = subtitle,
+                    colors = coverColors.colors,
+                    onPlay = {
+                        if (playbackStatus == PlaybackStatus.Paused) {
+                            actions.togglePlayPause()
+                        } else {
+                            actions.play(tracks, 0, playbackSource)
+                        }
+                    },
+                    onTogglePlayPause = actions.togglePlayPause,
+                    onPrevious = actions.previous,
+                    onNext = actions.next,
+                    playbackStatus = playbackStatus,
+                    collapseOnPause = collapseOnPause,
+                )
+            }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(start = 16.dp, end = 16.dp),
+                elevation = 2.dp,
+            ) {
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                    itemsIndexed(tracks) { index, track ->
+                        TrackRow(track, onClick = { actions.play(tracks, index, playbackSource) })
                     }
-                },
-                onTogglePlayPause = actions.togglePlayPause,
-                onPrevious = actions.previous,
-                onNext = actions.next,
-                playbackStatus = playbackStatus,
-                collapseOnPause = collapseOnPause,
-            )
-        }
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(start = 16.dp, end = 16.dp),
-            elevation = 2.dp,
-        ) {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(tracks) { index, track ->
-                    TrackRow(track, onClick = { actions.play(tracks, index, playbackSource) })
                 }
             }
         }
+        topBar(coverColors.colors?.contentColor)
     }
 }
 

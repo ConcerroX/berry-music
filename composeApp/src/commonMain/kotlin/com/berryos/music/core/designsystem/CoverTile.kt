@@ -3,6 +3,7 @@ package com.berryos.music.core.designsystem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import art.rippledesign.compose.rui.RTile
 import art.rippledesign.compose.rui.RTileMode
@@ -15,12 +16,13 @@ import org.jetbrains.compose.resources.stringResource
 
 /** Cover tile shared by the album and artist grids. */
 @Composable
-fun CoverTile(coverUrl: String?, title: String, text: String, onClick: () -> Unit) {
+fun CoverTile(coverUrl: String?, title: String, text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
     RTile(
         media = {
             AlbumCover(coverUrl, coverColors::onImage)
         },
+        modifier = modifier,
         backgroundColor = coverColors.colors?.background ?: Color.Transparent,
         contentColor = coverColors.colors?.contentColor,
         supportingContentColor = coverColors.colors?.supportingColor,

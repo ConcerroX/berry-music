@@ -1,9 +1,12 @@
 package com.berryos.music.feature.album
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.core.model.SourceKey
+import com.berryos.music.core.model.album
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.core.playback.playbackStatus
@@ -16,11 +19,13 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AlbumScreen(
+    source: SourceKey,
     albumId: String,
     state: LibraryUiState,
     actions: AppActions,
     playbackState: PlaybackState,
     collapseOnPause: Boolean,
+    topBar: @Composable (Color?) -> Unit = {},
 ) {
     when (state) {
         LibraryUiState.Loading -> PlaceholderScreen(
@@ -31,7 +36,7 @@ fun AlbumScreen(
         is LibraryUiState.Error -> PlaceholderScreen(stringResource(Res.string.album), state.message)
 
         is LibraryUiState.Ready -> {
-            val album = state.snapshot.albums.firstOrNull { it.id == albumId }
+            val album = state.snapshot.album(source, albumId)
             if (album == null) {
                 PlaceholderScreen(stringResource(Res.string.album), stringResource(Res.string.album_not_found))
             } else {
@@ -48,6 +53,7 @@ fun AlbumScreen(
                     playbackStatus = playbackState.playbackStatus(playbackSource),
                     collapseOnPause = collapseOnPause,
                     actions = actions,
+                    topBar = topBar,
                 )
             }
         }
