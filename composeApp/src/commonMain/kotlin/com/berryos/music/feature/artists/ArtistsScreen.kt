@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,8 @@ import com.berryos.music.core.designsystem.ContainerTransformSpec
 import com.berryos.music.core.designsystem.CoverTile
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
+import com.berryos.music.core.designsystem.ReportPageScrollable
+import com.berryos.music.core.designsystem.contentOverflows
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.artist_summary
@@ -50,6 +53,8 @@ internal fun ArtistsScreen(
 ) {
     val scope = rememberCoroutineScope()
     var viewportBounds by remember { mutableStateOf<Rect?>(null) }
+    val gridState = rememberLazyGridState()
+    ReportPageScrollable(gridState.layoutInfo.contentOverflows())
     // Keeps this grid composed while the transform draws it; Nav3 would otherwise drop it as soon
     // as its own scene transition settles.
     rememberRContainerTransformHold(
@@ -74,9 +79,8 @@ internal fun ArtistsScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { viewportBounds = it.boundsInWindow() },
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize().onGloballyPositioned { viewportBounds = it.boundsInWindow() },
                     contentPadding = PaddingValues(bottom = bottomContentPadding),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

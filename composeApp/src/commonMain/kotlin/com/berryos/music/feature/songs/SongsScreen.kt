@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ListItem
 import androidx.compose.material.Text
@@ -14,6 +15,8 @@ import androidx.compose.ui.unit.Dp
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
+import com.berryos.music.core.designsystem.ReportPageScrollable
+import com.berryos.music.core.designsystem.contentOverflows
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.playback.PlaybackSource
@@ -27,6 +30,8 @@ import org.jetbrains.compose.resources.stringResource
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SongsScreen(state: LibraryUiState, actions: AppActions, bottomContentPadding: Dp) {
+    val listState = rememberLazyListState()
+    ReportPageScrollable(listState.layoutInfo.contentOverflows())
     when (state) {
         LibraryUiState.Loading -> LibraryLoading()
 
@@ -44,6 +49,7 @@ fun SongsScreen(state: LibraryUiState, actions: AppActions, bottomContentPadding
                 )
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = bottomContentPadding),
                 ) {

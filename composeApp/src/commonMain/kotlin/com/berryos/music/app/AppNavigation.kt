@@ -96,6 +96,7 @@ internal fun TabContent(
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
     chromeMetrics: ChromeMetrics,
+    topContentInset: Dp,
     compact: Boolean,
     showMiniPlayer: Boolean,
     bottomContentInset: Dp,
@@ -116,6 +117,7 @@ internal fun TabContent(
             settings,
             collapseOnPause,
             chromeMetrics,
+            topContentInset,
             compact,
             showMiniPlayer,
             bottomContentInset,
@@ -136,6 +138,7 @@ private fun AppNavDisplay(
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
     chromeMetrics: ChromeMetrics,
+    topContentInset: Dp,
     compact: Boolean,
     showMiniPlayer: Boolean,
     bottomContentInset: Dp,
@@ -143,15 +146,17 @@ private fun AppNavDisplay(
     modifier: Modifier = Modifier,
 ) {
     val controller = rememberRContainerTransformNavController<ContainerTransformKey>()
+    // MDC's scrolling view is offset by the app bar's current bottom edge; the inset tracks the
+    // bar offset so the content fills the space the bar leaves instead of showing a gap.
     val rootPadding = PaddingValues(
         start = if (!compact) chromeMetrics.railWidth else 0.dp,
-        top = chromeMetrics.topBarHeight,
+        top = topContentInset,
         end = 0.dp,
         bottom = 0.dp,
     )
     val pushedPadding = PaddingValues(
         start = 0.dp,
-        top = chromeMetrics.topBarHeight,
+        top = topContentInset,
         end = 0.dp,
         bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
     )

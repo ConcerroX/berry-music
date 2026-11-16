@@ -3,6 +3,7 @@ package com.berryos.music.feature.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.ListItem
@@ -15,6 +16,8 @@ import com.berryos.music.app.navigation.AppearanceRoute
 import com.berryos.music.app.navigation.LibrarySettingsRoute
 import com.berryos.music.app.navigation.PlaybackSettingsRoute
 import com.berryos.music.app.navigation.ServersRoute
+import com.berryos.music.core.designsystem.ReportPageScrollable
+import com.berryos.music.core.designsystem.contentOverflows
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.about
 import com.berryos.music.resources.appearance
@@ -33,7 +36,9 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(actions: AppActions) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    val listState = rememberLazyListState()
+    ReportPageScrollable(listState.layoutInfo.contentOverflows())
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
             SettingsItem(Res.string.appearance, Res.drawable.ic_palette) {
                 actions.open(AppearanceRoute)
