@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
@@ -35,7 +37,6 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.RCircularReveal
 import art.rippledesign.compose.rui.RPlayPauseIcon
@@ -68,53 +69,63 @@ internal fun MediaPlaybackHeader(
     val fabColor = colors?.accentColor ?: MaterialTheme.colors.secondary
     val density = LocalDensity.current
     val revealOriginY = with(density) { FAB_TARGET_TOP.toPx() }
-    val fabStart = with(density) {
-        Offset(state.bandSize.width - (FAB_TRAILING_MARGIN + FAB_RADIUS).toPx(), 0f)
-    }
-    val fabTarget = Offset(state.bandSize.width / 2f, revealOriginY)
-    val fabTranslation = arcTranslation(fabStart, fabTarget, state.fabMoveProgress.value)
-    val fabPosition = fabStart + fabTranslation
-    var naturalHeight by remember { mutableStateOf(0.dp) }
+    var titleHeight by remember { mutableStateOf(0.dp) }
+    // The reveal rect is taller than a one-line title block, so it is the natural height until a
+    // long title proves otherwise. Deriving it this way keeps the very first frame at the right
+    // height instead of starting from the wrap height and jumping one frame later.
+    val naturalHeight = maxOf(titleHeight, REVEAL_RECT_HEIGHT)
     val expandedHeight = REVEAL_RECT_HEIGHT + BAND_BOTTOM_EXTRA
     val bandHeight = naturalHeight + (expandedHeight - naturalHeight) * state.bandExpandProgress.value
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(if (naturalHeight > 0.dp) bandHeight else Dp.Unspecified)
-            .onSizeChanged {
-                state.bandSize = it
-                if (naturalHeight == 0.dp) {
-                    naturalHeight = with(density) { it.height.toDp() }
-                }
-            },
-    ) {
-        MediaHeaderLayers(
-            title = title,
-            subtitle = subtitle,
-            colors = colors,
-            fabColor = fabColor,
-            revealed = state.revealed,
-            revealOrigin = fabPosition,
-            bandWidth = state.bandSize.width.toFloat(),
-            controlsProgress = state.controlsProgress.value,
-            volumeAlpha = state.volumeProgress.value,
-            stripReveal = state.topStripProgress.value,
-            titleAlpha = 1f - state.titleFadeProgress.value,
-            bottomTextAlpha = state.bottomTextProgress.value,
-            revealShadow = state.revealShadowProgress.value,
-            playbackPosition = playbackPosition,
-            onPrevious = onPrevious,
-            onNext = onNext,
-            onSeek = onSeek,
-        )
-        PlayFabs(
-            state = state,
-            playing = playing,
-            colors = colors,
-            translation = fabTranslation,
-            onPlay = { state.start(onPlay) },
-            onTogglePlayPause = onTogglePlayPause,
-        )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        // The measured band size trails the first frame; the constraints know the width right away,
+        // so the reveal origin and controls are correct from the first composition.
+        val bandWidthPx = if (state.bandSize.width > 0) {
+            state.bandSize.width.toFloat()
+        } else {
+            with(density) { maxWidth.toPx() }
+        }
+        val fabStart = with(density) {
+            Offset(bandWidthPx - (FAB_TRAILING_MARGIN + FAB_RADIUS).toPx(), 0f)
+        }
+        val fabTarget = Offset(bandWidthPx / 2f, revealOriginY)
+        val fabTranslation = arcTranslation(fabStart, fabTarget, state.fabMoveProgress.value)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(bandHeight)
+                .onSizeChanged { state.bandSize = it },
+        ) {
+            MediaHeaderLayers(
+                title = title,
+                subtitle = subtitle,
+                colors = colors,
+                fabColor = fabColor,
+                revealed = state.revealed,
+                revealOrigin = fabStart + fabTranslation,
+                bandWidth = bandWidthPx,
+                controlsProgress = state.controlsProgress.value,
+                volumeAlpha = state.volumeProgress.value,
+                stripReveal = state.topStripProgress.value,
+                titleAlpha = 1f - state.titleFadeProgress.value,
+                bottomTextAlpha = state.bottomTextProgress.value,
+                revealShadow = state.revealShadowProgress.value,
+                playbackPosition = playbackPosition,
+                onPrevious = onPrevious,
+                onNext = onNext,
+                onSeek = onSeek,
+                titleModifier = Modifier.onSizeChanged {
+                    titleHeight = with(density) { it.height.toDp() }
+                },
+            )
+            PlayFabs(
+                state = state,
+                playing = playing,
+                colors = colors,
+                translation = fabTranslation,
+                onPlay = { state.start(onPlay) },
+                onTogglePlayPause = onTogglePlayPause,
+            )
+        }
     }
 }
 
@@ -137,6 +148,7 @@ private fun BoxScope.MediaHeaderLayers(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSeek: (Long) -> Unit,
+    titleModifier: Modifier = Modifier,
 ) {
     Box(
         modifier = Modifier
@@ -145,7 +157,7 @@ private fun BoxScope.MediaHeaderLayers(
     )
     // Below the reveal so the expanded player covers it.
     BandTopEdge()
-    MediaTitleText(title, subtitle, colors, titleAlpha)
+    MediaTitleText(title, subtitle, colors, titleAlpha, titleModifier)
     val density = LocalDensity.current
     Box(
         modifier = Modifier
@@ -201,14 +213,24 @@ private fun BoxScope.BandTopEdge() {
 }
 
 @Composable
-private fun BoxScope.MediaTitleText(title: String, subtitle: String, colors: CoverColors?, titleAlpha: Float) {
+private fun BoxScope.MediaTitleText(
+    title: String,
+    subtitle: String,
+    colors: CoverColors?,
+    titleAlpha: Float,
+    modifier: Modifier = Modifier,
+) {
     val layerAlpha = titleAlpha
     Column(
         modifier = Modifier
             // Bottom-anchored so the title follows the growing band while it fades out.
             .align(Alignment.BottomStart)
             .fillMaxWidth()
+            // Measure the full text block even while the band is still short; the measured height
+            // feeds back into the band height so a wrapped title is never clipped.
+            .wrapContentHeight(unbounded = true)
             .graphicsLayer { this.alpha = layerAlpha }
+            .then(modifier)
             .padding(start = 72.dp, end = 72.dp, top = 48.dp, bottom = 48.dp),
     ) {
         Text(
