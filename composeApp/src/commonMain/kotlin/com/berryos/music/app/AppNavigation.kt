@@ -147,12 +147,13 @@ private fun AppNavDisplay(
 ) {
     val controller = rememberRContainerTransformNavController<ContainerTransformKey>()
     // MDC's scrolling view is offset by the app bar's current bottom edge; the inset tracks the
-    // bar offset so the content fills the space the bar leaves instead of showing a gap.
+    // bar offset so the content fills the space the bar leaves instead of showing a gap. The mini
+    // player inset is a container inset so the list (and its overscroll glow) ends above it.
     val rootPadding = PaddingValues(
         start = if (!compact) chromeMetrics.railWidth else 0.dp,
         top = topContentInset,
         end = 0.dp,
-        bottom = 0.dp,
+        bottom = bottomContentInset,
     )
     val pushedPadding = PaddingValues(
         start = 0.dp,
@@ -171,14 +172,14 @@ private fun AppNavDisplay(
             entry<AlbumsRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceAlbums),
             ) {
-                PaddedScreen(rootPadding) { AlbumsScreen(libraryState, actions, controller, bottomContentInset) }
+                PaddedScreen(rootPadding) { AlbumsScreen(libraryState, actions, controller) }
             }
-            entry<SongsRoute> { PaddedScreen(rootPadding) { SongsScreen(libraryState, actions, bottomContentInset) } }
+            entry<SongsRoute> { PaddedScreen(rootPadding) { SongsScreen(libraryState, actions) } }
             entry<PlaylistsRoute> { PaddedScreen(rootPadding) { PlaylistsScreen(actions) } }
             entry<ArtistsRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.SourceArtists),
             ) {
-                PaddedScreen(rootPadding) { ArtistsScreen(libraryState, actions, controller, bottomContentInset) }
+                PaddedScreen(rootPadding) { ArtistsScreen(libraryState, actions, controller) }
             }
             entry<SearchRoute> { PaddedScreen(pushedPadding) { SearchScreen(actions) } }
             entry<SettingsRoute> { PaddedScreen(pushedPadding) { SettingsScreen(actions) } }

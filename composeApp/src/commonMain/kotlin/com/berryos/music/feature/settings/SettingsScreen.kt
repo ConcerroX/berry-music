@@ -16,8 +16,7 @@ import com.berryos.music.app.navigation.AppearanceRoute
 import com.berryos.music.app.navigation.LibrarySettingsRoute
 import com.berryos.music.app.navigation.PlaybackSettingsRoute
 import com.berryos.music.app.navigation.ServersRoute
-import com.berryos.music.core.designsystem.ReportPageScrollable
-import com.berryos.music.core.designsystem.contentOverflows
+import com.berryos.music.core.designsystem.reportPageScrollable
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.about
 import com.berryos.music.resources.appearance
@@ -37,7 +36,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 fun SettingsScreen(actions: AppActions) {
     val listState = rememberLazyListState()
-    ReportPageScrollable(listState.layoutInfo.contentOverflows())
+    listState.reportPageScrollable()
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
             SettingsItem(Res.string.appearance, Res.drawable.ic_palette) {

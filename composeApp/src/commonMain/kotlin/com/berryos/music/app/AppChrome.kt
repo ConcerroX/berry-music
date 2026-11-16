@@ -35,6 +35,7 @@ import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +84,7 @@ import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.CoverPaletteDialog
 import com.berryos.music.core.designsystem.LocalPageScrollable
+import com.berryos.music.core.designsystem.LocalTopBarOffsetPx
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -204,8 +206,6 @@ internal fun AppChrome(
     var miniPlayerHeight by remember { mutableStateOf(64.dp) }
     var railWidth by remember { mutableStateOf(72.dp) }
     val chromeMetrics = ChromeMetrics(
-        topBarHeight = topBarHeight,
-        bottomBarHeight = bottomBarHeight,
         miniPlayerHeight = miniPlayerHeight,
         railWidth = railWidth,
     )
@@ -248,7 +248,18 @@ internal fun AppChrome(
     fun setTopBarOffset(offsetPx: Float) {
         topBarOffsets[routeState.value] = offsetPx.coerceIn(0f, topBarHeightState.value)
     }
+    // A page whose content fits keeps its bar visible; this also clears an offset restored for a
+    // page whose content has since become shorter than the viewport.
+    LaunchedEffect(routeKey, pageScrollable.value) {
+        if (!pageScrollable.value && !isDetailRoute) {
+            topBarSnapJob?.cancel()
+            topBarOffsets[routeKey] = 0f
+        }
+    }
     val topBarOffsetPx = (topBarOffsets[routeKey] ?: fallbackOffsetPx).coerceIn(0f, topBarHeightPx)
+    val exposedTopBarOffset = remember {
+        derivedStateOf { (topBarOffsets[routeState.value] ?: 0f).coerceIn(0f, topBarHeightState.value) }
+    }
     val topContentInset = with(density) { (topBarHeightPx - topBarOffsetPx).coerceAtLeast(0f).toDp() }
     // Detail pages draw their own top bar and fill the screen, so the global bar does not follow
     // their scroll.
@@ -374,7 +385,10 @@ internal fun AppChrome(
                 if (isDetailRoute) {
                     Box(modifier = Modifier.fillMaxSize().consumeAllPointerInput())
                 }
-                CompositionLocalProvider(LocalPageScrollable provides pageScrollable) {
+                CompositionLocalProvider(
+                    LocalPageScrollable provides pageScrollable,
+                    LocalTopBarOffsetPx provides exposedTopBarOffset,
+                ) {
                     TabContent(
                         tabs = tabs,
                         selectedIndex = selectedTabIndex,

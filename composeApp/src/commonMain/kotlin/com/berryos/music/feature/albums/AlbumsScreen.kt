@@ -1,6 +1,5 @@
 package com.berryos.music.feature.albums
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.container.rContainerTransformSource
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
@@ -30,8 +28,7 @@ import com.berryos.music.core.designsystem.ContainerTransformSpec
 import com.berryos.music.core.designsystem.CoverTile
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
-import com.berryos.music.core.designsystem.ReportPageScrollable
-import com.berryos.music.core.designsystem.contentOverflows
+import com.berryos.music.core.designsystem.reportPageScrollable
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.album_summary
@@ -48,12 +45,11 @@ internal fun AlbumsScreen(
     state: LibraryUiState,
     actions: AppActions,
     transform: RContainerTransformNavController<ContainerTransformKey>,
-    bottomContentPadding: Dp,
 ) {
     val scope = rememberCoroutineScope()
     var viewportBounds by remember { mutableStateOf<Rect?>(null) }
     val gridState = rememberLazyGridState()
-    ReportPageScrollable(gridState.layoutInfo.contentOverflows())
+    gridState.reportPageScrollable()
     // Keeps this grid composed while the transform draws it; Nav3 would otherwise drop it as soon
     // as its own scene transition settles.
     rememberRContainerTransformHold(
@@ -80,7 +76,6 @@ internal fun AlbumsScreen(
                     columns = GridCells.Fixed(2),
                     state = gridState,
                     modifier = Modifier.fillMaxSize().onGloballyPositioned { viewportBounds = it.boundsInWindow() },
-                    contentPadding = PaddingValues(bottom = bottomContentPadding),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
