@@ -29,7 +29,7 @@ internal class TrackListExpansionState(
 ) {
     var containerHeight by mutableIntStateOf(0)
     var headerHeight by mutableIntStateOf(0)
-    var cardHeight by mutableIntStateOf(0)
+    var contentHeight by mutableIntStateOf(0)
     var expansion by mutableFloatStateOf(0f)
         private set
 
@@ -38,7 +38,7 @@ internal class TrackListExpansionState(
     val expandable: Boolean
         get() = containerHeight > headerHeight &&
             headerHeight > appBarBottomPx &&
-            cardHeight >= containerHeight - headerHeight
+            contentHeight >= containerHeight - headerHeight
 
     val connection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -98,7 +98,5 @@ internal class TrackListExpansionState(
         return consumed
     }
 }
-
-internal const val CARD_SIZE_CHANGE_MILLIS = 250
 
 private const val EXPANSION_SETTLE_MILLIS = 200

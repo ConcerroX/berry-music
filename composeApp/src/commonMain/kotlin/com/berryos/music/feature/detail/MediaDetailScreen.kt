@@ -2,14 +2,12 @@
 
 package com.berryos.music.feature.detail
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -17,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
@@ -34,6 +32,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -46,16 +45,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import art.rippledesign.compose.rui.RListItemInsertion
+import art.rippledesign.compose.rui.RListItemInsertionStyle
+import art.rippledesign.compose.rui.rememberRListItemInsertionState
 import coil3.Image
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.AlbumCover
@@ -99,21 +101,25 @@ fun MediaDetailScreen(
     topBar: @Composable (Color?) -> Unit = {},
 ) {
     val coverColors = rememberAlbumCoverColors(coverUrl)
-    val pageBackground = coverColors.colors?.background ?: MaterialTheme.colors.surface
     val listState = remember(playbackSource) { LazyListState() }
     val playbackStatus = playbackState.playbackStatus(playbackSource)
     val currentTrack = playbackState.currentTrack.takeIf { playbackStatus != PlaybackStatus.NotPlaying }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val appBarBottomPx = WindowInsets.statusBars.getTop(density) + with(density) { APP_BAR_HEIGHT.roundToPx() }
+    // Only inset from the system bar when the page itself reaches the window bottom; detail
+    // pages above the mini player already sit above the system bars.
+    val navigationBarBottom = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
+    val cardContentBottomInset = if (bottomInset > 0.dp) 0.dp else navigationBarBottom
     val expansionState = remember(scope, listState, appBarBottomPx) {
         TrackListExpansionState(scope, listState, appBarBottomPx)
     }
+    SyncCardContentHeight(expansionState, tracks.size, currentTrack != null)
     LaunchedEffect(expansionState.expandable) { expansionState.collapseIfNotExpandable() }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(pageBackground)
+            .background(coverColors.colors?.background ?: MaterialTheme.colors.surface)
             .padding(bottom = bottomInset)
             .onSizeChanged { expansionState.containerHeight = it.height }
             .nestedScroll(expansionState.connection),
@@ -141,14 +147,13 @@ fun MediaDetailScreen(
                 TrackListCard(
                     tracks = tracks,
                     listState = listState,
-                    playbackStatus = playbackStatus,
+                    showCurrentTrack = currentTrack != null,
                     currentTrack = currentTrack,
                     playbackSource = playbackSource,
                     actions = actions,
                     entryIds = entryIds,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onGloballyPositioned { expansionState.cardHeight = it.size.height },
+                    contentBottomInset = cardContentBottomInset,
+                    cardExpanded = expansionState.expansion > 0f,
                 )
             },
         )
@@ -156,6 +161,18 @@ fun MediaDetailScreen(
         BackHandler(enabled = expansionState.expansion > 0f) { expansionState.collapse() }
         topBar(coverColors.colors?.contentColor)
     }
+}
+
+/** The card fills to the bottom, so expansion depends on the natural height of its content. */
+@Composable
+private fun SyncCardContentHeight(
+    expansionState: TrackListExpansionState,
+    trackCount: Int,
+    showCurrentTrack: Boolean,
+) {
+    val density = LocalDensity.current
+    val contentHeight = trackListHeight(trackCount, showCurrentTrack) + CARD_VERTICAL_PADDING * 2
+    SideEffect { expansionState.contentHeight = with(density) { contentHeight.roundToPx() } }
 }
 
 @Composable
@@ -227,60 +244,83 @@ private fun TrackListLayout(
     }
 }
 
+@Suppress("LongMethod")
 @Composable
 private fun TrackListCard(
     tracks: List<Track>,
     listState: LazyListState,
-    playbackStatus: PlaybackStatus,
+    showCurrentTrack: Boolean,
     currentTrack: Track?,
     playbackSource: PlaybackSource,
     actions: AppActions,
     entryIds: List<Long>?,
+    contentBottomInset: Dp,
+    cardExpanded: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val showCurrentTrack = playbackStatus != PlaybackStatus.NotPlaying && currentTrack != null
-    val cardHeight by animateDpAsState(
-        targetValue = trackListHeight(tracks.size, showCurrentTrack) + CARD_VERTICAL_PADDING * 2,
-        animationSpec = tween(CARD_SIZE_CHANGE_MILLIS, easing = FastOutSlowInEasing),
-        label = "trackListHeight",
-    )
+    val insertionState = rememberRListItemInsertionState(playbackSource)
+    // The playback band expands while the card is at rest; let the band carry the vertical motion.
+    val topItemStyle = if (cardExpanded) RListItemInsertionStyle.Rise else RListItemInsertionStyle.Fade
+    // The current track section is inserted at the top once playback starts; reveal it at once,
+    // because the playback band is expanding at the same time and two motions would fight.
+    LaunchedEffect(showCurrentTrack) {
+        if (showCurrentTrack) listState.scrollToItem(0)
+    }
     Box(modifier = modifier) {
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = cardHeight)
+                .fillMaxSize()
                 .padding(start = 16.dp, end = 16.dp),
+            shape = RectangleShape,
             elevation = 2.dp,
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = CARD_VERTICAL_PADDING),
+                modifier = Modifier.fillMaxSize(),
+                // Padding inside the scroll container keeps the overscroll glow at the card edge.
+                contentPadding = PaddingValues(
+                    top = CARD_VERTICAL_PADDING,
+                    bottom = CARD_VERTICAL_PADDING + contentBottomInset,
+                ),
             ) {
                 if (showCurrentTrack && currentTrack != null) {
                     item(key = CURRENT_TRACK_ITEM_KEY) {
-                        CurrentTrackSection(
-                            track = currentTrack,
-                            showAlbum = playbackSource !is PlaybackSource.Album,
-                            totalDurationMs = tracks.sumOf { it.durationMs },
-                            onPlayNext = actions.playNext,
-                        )
+                        RListItemInsertion(
+                            state = insertionState,
+                            itemKey = CURRENT_TRACK_ITEM_KEY,
+                            style = topItemStyle,
+                            modifier = Modifier.animateItem(fadeInSpec = null),
+                        ) {
+                            CurrentTrackSection(
+                                track = currentTrack,
+                                showAlbum = playbackSource !is PlaybackSource.Album,
+                                totalDurationMs = tracks.sumOf { it.durationMs },
+                                onPlayNext = actions.playNext,
+                            )
+                        }
                     }
                 }
                 itemsIndexed(
                     tracks,
                     key = { index, track -> entryIds?.getOrNull(index) ?: trackKey(track) },
                 ) { index, track ->
-                    Column {
-                        TrackRow(
-                            track = track,
-                            showAlbum = playbackSource !is PlaybackSource.Album,
-                            onClick = { actions.play(tracks, index, playbackSource) },
-                            onPlayNext = actions.playNext,
-                        )
-                        if (index < tracks.lastIndex) {
-                            Divider(modifier = Modifier.padding(start = TRACK_DIVIDER_INSET))
+                    val itemKey = entryIds?.getOrNull(index) ?: trackKey(track)
+                    RListItemInsertion(
+                        state = insertionState,
+                        itemKey = itemKey,
+                        index = index,
+                        modifier = Modifier.animateItem(fadeInSpec = null),
+                    ) {
+                        Column {
+                            TrackRow(
+                                track = track,
+                                showAlbum = playbackSource !is PlaybackSource.Album,
+                                onClick = { actions.play(tracks, index, playbackSource) },
+                                onPlayNext = actions.playNext,
+                            )
+                            if (index < tracks.lastIndex) {
+                                Divider(modifier = Modifier.padding(start = TRACK_DIVIDER_INSET))
+                            }
                         }
                     }
                 }
