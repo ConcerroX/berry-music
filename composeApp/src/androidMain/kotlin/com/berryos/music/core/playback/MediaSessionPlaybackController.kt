@@ -95,14 +95,20 @@ class MediaSessionPlaybackController(context: Context) : PlaybackController {
         }
         val playable = tracks.filter { it.source == SourceKey.Local || it.streamUrl != null }
         if (playable.isEmpty()) return
-        this.tracks = playable
-        this.entryIds = playable.map { nextEntryId++ }
-        this.source = source
-        val items = playable.map(::playbackMediaItem)
-        val index = startIndex.coerceIn(0, items.lastIndex)
-        mediaController.setMediaItems(items, index, 0L)
-        mediaController.prepare()
-        mediaController.play()
+        val index = startIndex.coerceIn(0, playable.lastIndex)
+        if (playable == this.tracks && source == this.source) {
+            // Replaying the same collection keeps the queue identity, so queue entry ids and the
+            // list keys built from them stay stable instead of rebuilding every row.
+            mediaController.seekTo(index, 0L)
+            mediaController.play()
+        } else {
+            this.tracks = playable
+            this.entryIds = playable.map { nextEntryId++ }
+            this.source = source
+            mediaController.setMediaItems(playable.map(::playbackMediaItem), index, 0L)
+            mediaController.prepare()
+            mediaController.play()
+        }
         updateState()
         updatePosition()
     }
