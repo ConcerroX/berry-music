@@ -7,7 +7,6 @@ import androidx.compose.material.ModalBottomSheetValue
 import androidx.compose.material.Surface
 import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -160,13 +159,6 @@ internal fun AppShell(
     val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
     val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
         playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
-    // Starting a queue session from the player (Play next) leaves this page out of the session,
-    // so the sheet steps aside and the mini player takes over.
-    LaunchedEffect(playbackState.source) {
-        if (playbackState.source is PlaybackSource.Queue && sheetVisible) {
-            playbackSheetState.hide()
-        }
-    }
     val queueCoverUrl = playbackState.currentTrack?.let { track ->
         (libraryState as? LibraryUiState.Ready)?.snapshot?.album(track.source, track.albumId)?.coverUrl
     }
