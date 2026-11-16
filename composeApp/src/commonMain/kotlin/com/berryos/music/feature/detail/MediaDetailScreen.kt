@@ -111,9 +111,8 @@ fun MediaDetailScreen(
     // pages above the mini player already sit above the system bars.
     val navigationBarBottom = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
     val cardContentBottomInset = if (bottomInset > 0.dp) 0.dp else navigationBarBottom
-    val expansionState = remember(scope, listState, appBarBottomPx) {
-        TrackListExpansionState(scope, listState, appBarBottomPx)
-    }
+    val expansionState =
+        remember(scope, listState, appBarBottomPx) { TrackListExpansionState(scope, listState, appBarBottomPx) }
     SyncCardContentHeight(expansionState, tracks.size, currentTrack != null)
     LaunchedEffect(expansionState.expandable) { expansionState.collapseIfNotExpandable() }
     Box(
@@ -147,13 +146,13 @@ fun MediaDetailScreen(
                 TrackListCard(
                     tracks = tracks,
                     listState = listState,
-                    showCurrentTrack = currentTrack != null,
                     currentTrack = currentTrack,
                     playbackSource = playbackSource,
                     actions = actions,
                     entryIds = entryIds,
                     contentBottomInset = cardContentBottomInset,
                     cardExpanded = expansionState.expansion > 0f,
+                    currentIndex = playbackState.currentIndex,
                 )
             },
         )
@@ -249,15 +248,16 @@ private fun TrackListLayout(
 private fun TrackListCard(
     tracks: List<Track>,
     listState: LazyListState,
-    showCurrentTrack: Boolean,
     currentTrack: Track?,
     playbackSource: PlaybackSource,
     actions: AppActions,
     entryIds: List<Long>?,
     contentBottomInset: Dp,
     cardExpanded: Boolean,
+    currentIndex: Int,
     modifier: Modifier = Modifier,
 ) {
+    val showCurrentTrack = currentTrack != null
     val insertionState = rememberRListItemInsertionState(playbackSource)
     // The playback band expands while the card is at rest; let the band carry the vertical motion.
     val topItemStyle = if (cardExpanded) RListItemInsertionStyle.Rise else RListItemInsertionStyle.Fade
@@ -305,6 +305,12 @@ private fun TrackListCard(
                     key = { index, track -> entryIds?.getOrNull(index) ?: trackKey(track) },
                 ) { index, track ->
                     val itemKey = entryIds?.getOrNull(index) ?: trackKey(track)
+                    // In a queue the number shows the distance from the current track.
+                    val queueNumber = if (playbackSource is PlaybackSource.Queue && currentIndex >= 0) {
+                        index - currentIndex
+                    } else {
+                        null
+                    }
                     RListItemInsertion(
                         state = insertionState,
                         itemKey = itemKey,
@@ -315,6 +321,7 @@ private fun TrackListCard(
                             TrackRow(
                                 track = track,
                                 showAlbum = playbackSource !is PlaybackSource.Album,
+                                number = queueNumber,
                                 onClick = { actions.play(tracks, index, playbackSource) },
                                 onPlayNext = actions.playNext,
                             )
@@ -400,6 +407,7 @@ private fun BoxScope.MediaImageScrim() {
 private fun TrackRow(
     track: Track,
     showAlbum: Boolean,
+    number: Int? = null,
     onClick: (() -> Unit)?,
     onPlayNext: (Track) -> Unit,
     showVolumeIcon: Boolean = false,
@@ -424,7 +432,7 @@ private fun TrackRow(
                 )
             } else {
                 Text(
-                    text = track.trackNumber.toString(),
+                    text = (number ?: track.trackNumber).toString(),
                     style = MaterialTheme.typography.body1,
                     color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
                     maxLines = 1,
