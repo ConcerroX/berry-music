@@ -62,6 +62,7 @@ import coil3.Image
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.AlbumCover
 import com.berryos.music.core.designsystem.AlbumCoverColorsState
+import com.berryos.music.core.designsystem.LOW_ALPHA
 import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.designsystem.rememberAlbumCoverColors
@@ -305,12 +306,15 @@ private fun TrackListCard(
                     key = { index, track -> entryIds?.getOrNull(index) ?: trackKey(track) },
                 ) { index, track ->
                     val itemKey = entryIds?.getOrNull(index) ?: trackKey(track)
-                    // In a queue the number shows the distance from the current track.
-                    val queueNumber = if (playbackSource is PlaybackSource.Queue && currentIndex >= 0) {
+                    // Album and artist pages also act as the playback queue while they are the
+                    // session, so the page order maps to the queue order; only queue pages show
+                    // the relative number, the others keep the track number.
+                    val queueOffset = if (showCurrentTrack && currentIndex >= 0) {
                         index - currentIndex
                     } else {
                         null
                     }
+                    val played = queueOffset != null && queueOffset < 0
                     RListItemInsertion(
                         state = insertionState,
                         itemKey = itemKey,
@@ -321,7 +325,9 @@ private fun TrackListCard(
                             TrackRow(
                                 track = track,
                                 showAlbum = playbackSource !is PlaybackSource.Album,
-                                number = queueNumber,
+                                number = if (playbackSource is PlaybackSource.Queue) queueOffset else null,
+                                played = played,
+                                selected = queueOffset == 0,
                                 onClick = { actions.play(tracks, index, playbackSource) },
                                 onPlayNext = actions.playNext,
                             )
@@ -343,7 +349,8 @@ private fun CurrentTrackSection(track: Track, showAlbum: Boolean, totalDurationM
             track = track,
             showAlbum = showAlbum,
             showVolumeIcon = true,
-            onClick = null,
+            // Tappable for consistency with the other rows; replaying the same track is a no-op.
+            onClick = {},
             onPlayNext = onPlayNext,
         )
         Divider(modifier = Modifier.padding(top = CURRENT_TRACK_DIVIDER_TOP_PADDING))
@@ -408,6 +415,8 @@ private fun TrackRow(
     track: Track,
     showAlbum: Boolean,
     number: Int? = null,
+    played: Boolean = false,
+    selected: Boolean = false,
     onClick: (() -> Unit)?,
     onPlayNext: (Track) -> Unit,
     showVolumeIcon: Boolean = false,
@@ -415,6 +424,13 @@ private fun TrackRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                if (selected) {
+                    MaterialTheme.colors.primary.copy(alpha = SELECTED_ALPHA)
+                } else {
+                    Color.Transparent
+                },
+            )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .height(TRACK_ROW_HEIGHT)
             .padding(start = TRACK_ROW_PADDING),
@@ -434,7 +450,9 @@ private fun TrackRow(
                 Text(
                     text = (number ?: track.trackNumber).toString(),
                     style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
+                    color = MaterialTheme.colors.onSurface.copy(
+                        alpha = if (played) LOW_ALPHA else MEDIUM_ALPHA,
+                    ),
                     maxLines = 1,
                 )
             }
@@ -447,6 +465,7 @@ private fun TrackRow(
             } else {
                 stringResource(Res.string.track_summary, track.artist, formatDuration(track.durationMs))
             },
+            played = played,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
@@ -482,20 +501,26 @@ private fun TrackRowMenu(track: Track, onPlayNext: (Track) -> Unit) {
 
 /** Places the two lines by baseline: 32dp from the row top, then 20dp below the first baseline. */
 @Composable
-private fun TrackTexts(title: String, subtitle: String, modifier: Modifier = Modifier) {
+private fun TrackTexts(title: String, subtitle: String, played: Boolean, modifier: Modifier = Modifier) {
     Layout(
         content = {
             Text(
                 text = title,
                 style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface,
+                color = if (played) {
+                    MaterialTheme.colors.onSurface.copy(alpha = LOW_ALPHA)
+                } else {
+                    MaterialTheme.colors.onSurface
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = MEDIUM_ALPHA),
+                color = MaterialTheme.colors.onSurface.copy(
+                    alpha = if (played) LOW_ALPHA else MEDIUM_ALPHA,
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -516,6 +541,7 @@ private fun TrackTexts(title: String, subtitle: String, modifier: Modifier = Mod
 private fun trackKey(track: Track): String = "${track.source}:${track.id}"
 
 private const val CURRENT_TRACK_ITEM_KEY = "current-track"
+private const val SELECTED_ALPHA = 0.12f
 
 private val APP_BAR_HEIGHT = 56.dp
 private val CARD_VERTICAL_PADDING = 8.dp

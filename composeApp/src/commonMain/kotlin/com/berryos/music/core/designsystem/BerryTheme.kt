@@ -54,5 +54,8 @@ private fun animatedColor(target: Color): Color = animateColorAsState(
 /** Alpha for medium-emphasis content such as secondary text and icons. */
 const val MEDIUM_ALPHA = 0.54f
 
+/** Alpha for low-emphasis content, such as queue rows that have already been played. */
+const val LOW_ALPHA = 0.38f
+
 private const val THEME_ANIMATION_MILLIS = 600
 private const val VARIANT_BLACK_RATIO = 0.3f
