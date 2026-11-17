@@ -46,6 +46,9 @@ data class PlaylistRoute(val playlistId: String) : AppRoute
 data class FolderRoute(val folderId: String) : AppRoute
 
 @Serializable
+data class TrackMetadataRoute(val source: SourceKey, val trackId: String) : AppRoute
+
+@Serializable
 data object AppearanceRoute : AppRoute
 
 @Serializable

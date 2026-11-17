@@ -38,6 +38,7 @@
     <string name="collapse">Collapse</string>
     <string name="more_options">More options</string>
     <string name="play_next">Play next</string>
+    <string name="view_metadata">View metadata</string>
     <string name="queue">Queue</string>
     <string name="local_music">Local Music</string>
     <string name="account_service_name">Berry Live Music</string>
@@ -71,6 +72,15 @@
     <string name="unknown_title">Unknown title</string>
     <string name="unknown_artist">Unknown artist</string>
     <string name="unknown_album">Unknown album</string>
+
+    <string name="metadata">Metadata</string>
+    <string name="metadata_title">Title</string>
+    <string name="metadata_artist">Artist</string>
+    <string name="metadata_album">Album</string>
+    <string name="metadata_track_number">Track number</string>
+    <string name="metadata_year">Year</string>
+    <string name="metadata_duration">Duration</string>
+    <string name="track_not_found">Track not found.</string>
 
     <string name="folder_id">Folder id: %1$s</string>
     <string name="playlist_id">Playlist id: %1$s</string>
