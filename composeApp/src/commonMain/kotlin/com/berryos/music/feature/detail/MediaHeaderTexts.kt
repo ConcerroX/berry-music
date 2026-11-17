@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.formatDuration
 import com.berryos.music.core.playback.PlaybackPosition
+import com.berryos.music.core.playback.progress
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.title_subtitle
 import kotlinx.coroutines.flow.StateFlow
@@ -108,7 +109,7 @@ private fun StripVisuals(
         val thumbWidth = with(density) { STRIP_THUMB_WIDTH.toPx() }
         val rippleHalfSize = with(density) { TOP_STRIP_HEIGHT.toPx() / 2f }
         val travel = with(density) { maxWidth.toPx() } - travelInset * 2 - thumbWidth
-        val thumbX = travelInset + travel * playbackFraction(position)
+        val thumbX = travelInset + travel * position.progress
         // An unbounded ripple expands from the square's center with the default radius (half
         // the diagonal, i.e. its circumscribed circle); the strip clip keeps it inside.
         Box(
@@ -190,12 +191,6 @@ private fun StripTouchTarget(
             }
         },
     )
-}
-
-private fun playbackFraction(position: PlaybackPosition): Float = if (position.durationMs > 0L) {
-    (position.positionMs.toFloat() / position.durationMs).coerceIn(0f, 1f)
-} else {
-    0f
 }
 
 @Composable

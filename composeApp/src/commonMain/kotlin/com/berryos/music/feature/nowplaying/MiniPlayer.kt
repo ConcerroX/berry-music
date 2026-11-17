@@ -26,6 +26,7 @@ import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.core.model.Track
 import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackState
+import com.berryos.music.core.playback.progress
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.ic_pause
 import com.berryos.music.resources.ic_play_arrow
@@ -63,7 +64,7 @@ fun MiniPlayer(
                     .fillMaxHeight(),
             ) {
                 LinearProgressIndicator(
-                    progress = playbackFraction(position),
+                    progress = position.progress,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 MiniPlayerBody(
@@ -122,12 +123,6 @@ private fun MiniPlayerBody(
             )
         }
     }
-}
-
-private fun playbackFraction(position: PlaybackPosition): Float = if (position.durationMs > 0L) {
-    (position.positionMs.toFloat() / position.durationMs).coerceIn(0f, 1f)
-} else {
-    0f
 }
 
 private val MINI_PLAYER_HEIGHT = 64.dp

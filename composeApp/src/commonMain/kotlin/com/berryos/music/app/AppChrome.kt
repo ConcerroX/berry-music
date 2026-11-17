@@ -88,8 +88,7 @@ import com.berryos.music.core.designsystem.CoverPaletteDialog
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
-import com.berryos.music.core.model.album
-import com.berryos.music.core.model.artist
+import com.berryos.music.core.model.coverUrlOf
 import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
@@ -144,12 +143,8 @@ internal fun AppChrome(
     val isDetailRoute = route is AlbumRoute || route is ArtistRoute
     val title = routeTitle(route)
     val detailCoverUrl = when (route) {
-        is AlbumRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.album(route.source, route.albumId)
-            ?.coverUrl
-
-        is ArtistRoute -> (libraryState as? LibraryUiState.Ready)?.snapshot?.artist(route.source, route.artistId)
-            ?.coverUrl
-
+        is AlbumRoute -> libraryState.albumCoverUrl(route.source, route.albumId)
+        is ArtistRoute -> libraryState.artistCoverUrl(route.source, route.artistId)
         else -> null
     }
     val detailColors = if (!isDetailRoute) {
@@ -188,8 +183,8 @@ internal fun AppChrome(
         ),
         label = "rootChromeOffset",
     )
-    val miniCoverUrl = (libraryState as? LibraryUiState.Ready)?.snapshot?.let { snapshot ->
-        playbackState.currentTrack?.let { track -> snapshot.album(track.source, track.albumId)?.coverUrl }
+    val miniCoverUrl = playbackState.currentTrack?.let { track ->
+        (libraryState as? LibraryUiState.Ready)?.snapshot?.coverUrlOf(track)
     }
     val scaffoldState = rememberScaffoldState(rememberDrawerState(DrawerValue.Closed))
     val drawerScope = rememberCoroutineScope()
@@ -290,17 +285,14 @@ internal fun AppChrome(
         }
     }
     val topBarHidden = topBarOffsetPx >= topBarHeightPx - 0.5f
+    val openDrawerAction: () -> Unit = { drawerScope.launch { scaffoldState.drawerState.open() } }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
         // Only the mini player permanently occupies the bottom; the bar is allowed to cover the
         // end of the list, exactly like MDC, because scrolling down hides it.
         val rootBottomInset = if (showMiniPlayer) miniPlayerHeight else 0.dp
         val drawerEnabled = isRoot && compact
-        val openDrawer: (() -> Unit)? = if (drawerEnabled) {
-            { drawerScope.launch { scaffoldState.drawerState.open() } }
-        } else {
-            null
-        }
+        val openDrawer = openDrawerAction.takeIf { drawerEnabled }
         Scaffold(
             scaffoldState = scaffoldState,
             drawerGesturesEnabled = drawerEnabled,
@@ -311,11 +303,7 @@ internal fun AppChrome(
             },
         ) { _ ->
             Box(modifier = Modifier.fillMaxSize().nestedScroll(hideOnScroll)) {
-                val drawerAction: (() -> Unit)? = if (compact) {
-                    { drawerScope.launch { scaffoldState.drawerState.open() } }
-                } else {
-                    null
-                }
+                val drawerAction = openDrawerAction.takeIf { compact }
                 val contentStart = if (!compact && isRoot) railWidth else 0.dp
                 // Detail pages draw their own top bar and fill the screen, so the global bar stays
                 // behind their content.

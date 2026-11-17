@@ -36,7 +36,7 @@ import com.berryos.music.core.designsystem.BerryTheme
 import com.berryos.music.core.designsystem.rememberLoadedCoverColors
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.library.filtered
-import com.berryos.music.core.model.album
+import com.berryos.music.core.model.coverUrlOf
 import com.berryos.music.core.playback.PlaybackController
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
@@ -78,13 +78,8 @@ fun App(playback: PlaybackController, auth: AuthController, settings: AppSetting
     val authState by auth.state.collectAsState()
     val visibleLibrary = libraryState.filtered(authState.showingLocal)
     val nowPlayingCoverUrl = remember(visibleLibrary, playbackState.currentTrack) {
-        val track = playbackState.currentTrack
-        val snapshot = (visibleLibrary as? LibraryUiState.Ready)?.snapshot
-        if (track == null || snapshot == null) {
-            null
-        } else {
-            snapshot.album(track.source, track.albumId)?.coverUrl
-        }
+        val track = playbackState.currentTrack ?: return@remember null
+        (visibleLibrary as? LibraryUiState.Ready)?.snapshot?.coverUrlOf(track)
     }
     BerryTheme(accent = rememberLoadedCoverColors(nowPlayingCoverUrl)) {
         Surface(modifier = Modifier.fillMaxSize()) {
@@ -155,7 +150,7 @@ internal fun AppShell(
     val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
         playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
     val queueCoverUrl = playbackState.currentTrack?.let { track ->
-        (libraryState as? LibraryUiState.Ready)?.snapshot?.album(track.source, track.albumId)?.coverUrl
+        (libraryState as? LibraryUiState.Ready)?.snapshot?.coverUrlOf(track)
     }
     val sheetTopBar: @Composable (Color?) -> Unit = { contentColor ->
         AppTopBar(

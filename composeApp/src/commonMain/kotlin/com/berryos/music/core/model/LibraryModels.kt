@@ -55,3 +55,5 @@ fun LibrarySnapshot.album(source: SourceKey, albumId: String): Album? =
 
 fun LibrarySnapshot.artist(source: SourceKey, artistId: String): Artist? =
     artists.firstOrNull { it.source == source && it.id == artistId }
+
+fun LibrarySnapshot.coverUrlOf(track: Track): String? = album(track.source, track.albumId)?.coverUrl

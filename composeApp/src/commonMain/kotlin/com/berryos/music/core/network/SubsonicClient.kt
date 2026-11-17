@@ -41,6 +41,13 @@ class SubsonicClient(private val client: HttpClient, private val baseUrl: String
         parameters.append("c", CLIENT_NAME)
     }
 
+    private fun HttpRequestBuilder.appendAuth(username: String, jwt: String) {
+        parameter("u", username)
+        parameter("jwt", jwt)
+        parameter("v", API_VERSION)
+        parameter("c", CLIENT_NAME)
+    }
+
     private suspend fun request(
         username: String,
         jwt: String,
@@ -48,10 +55,7 @@ class SubsonicClient(private val client: HttpClient, private val baseUrl: String
         configure: HttpRequestBuilder.() -> Unit,
     ): SubsonicResponse? {
         val response = client.get("$baseUrl/rest/$endpoint") {
-            parameter("u", username)
-            parameter("jwt", jwt)
-            parameter("v", API_VERSION)
-            parameter("c", CLIENT_NAME)
+            appendAuth(username, jwt)
             parameter("f", "json")
             configure()
         }.body<SubsonicEnvelope>().response

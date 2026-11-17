@@ -46,6 +46,10 @@ fun PlaybackState.playbackStatus(source: PlaybackSource): PlaybackStatus = when 
  */
 data class PlaybackPosition(val positionMs: Long = 0L, val durationMs: Long = 0L)
 
+/** Played fraction in `0f..1f`; zero when the duration is unknown. */
+val PlaybackPosition.progress: Float
+    get() = if (durationMs > 0L) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+
 interface PlaybackController {
     val state: StateFlow<PlaybackState>
     val position: StateFlow<PlaybackPosition>

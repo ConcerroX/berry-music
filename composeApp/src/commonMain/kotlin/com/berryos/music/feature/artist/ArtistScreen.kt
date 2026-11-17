@@ -12,12 +12,12 @@ import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackPosition
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.core.playback.PlaybackState
+import com.berryos.music.feature.detail.DetailStateContent
 import com.berryos.music.feature.detail.MediaDetailScreen
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.artist
 import com.berryos.music.resources.artist_not_found
 import com.berryos.music.resources.artist_summary
-import com.berryos.music.resources.loading_library
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.stringResource
 
@@ -33,37 +33,29 @@ fun ArtistScreen(
     bottomInset: Dp = 0.dp,
     topBar: @Composable (Color?) -> Unit = {},
 ) {
-    when (state) {
-        LibraryUiState.Loading -> PlaceholderScreen(
-            stringResource(Res.string.artist),
-            stringResource(Res.string.loading_library),
-        )
-
-        is LibraryUiState.Error -> PlaceholderScreen(stringResource(Res.string.artist), state.message)
-
-        is LibraryUiState.Ready -> {
-            val artist = state.snapshot.artist(source, artistId)
-            if (artist == null) {
-                PlaceholderScreen(stringResource(Res.string.artist), stringResource(Res.string.artist_not_found))
-            } else {
-                val tracks = state.snapshot.tracks
-                    .filter { it.source == artist.source && it.artistId == artist.id }
-                    .sortedWith(compareBy({ it.album }, { it.trackNumber }))
-                val playbackSource = PlaybackSource.Artist(artist.id)
-                MediaDetailScreen(
-                    title = artist.name,
-                    subtitle = stringResource(Res.string.artist_summary, artist.albumCount, artist.trackCount),
-                    coverUrl = artist.coverUrl,
-                    tracks = tracks,
-                    playbackSource = playbackSource,
-                    playbackState = playbackState,
-                    playbackPosition = playbackPosition,
-                    collapseOnPause = collapseOnPause,
-                    actions = actions,
-                    bottomInset = bottomInset,
-                    topBar = topBar,
-                )
-            }
+    val title = stringResource(Res.string.artist)
+    DetailStateContent(title, state) { snapshot ->
+        val artist = snapshot.artist(source, artistId)
+        if (artist == null) {
+            PlaceholderScreen(title, stringResource(Res.string.artist_not_found))
+        } else {
+            val tracks = snapshot.tracks
+                .filter { it.source == artist.source && it.artistId == artist.id }
+                .sortedWith(compareBy({ it.album }, { it.trackNumber }))
+            val playbackSource = PlaybackSource.Artist(artist.id)
+            MediaDetailScreen(
+                title = artist.name,
+                subtitle = stringResource(Res.string.artist_summary, artist.albumCount, artist.trackCount),
+                coverUrl = artist.coverUrl,
+                tracks = tracks,
+                playbackSource = playbackSource,
+                playbackState = playbackState,
+                playbackPosition = playbackPosition,
+                collapseOnPause = collapseOnPause,
+                actions = actions,
+                bottomInset = bottomInset,
+                topBar = topBar,
+            )
         }
     }
 }
