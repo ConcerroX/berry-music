@@ -10,11 +10,11 @@ import androidx.compose.material.ListItem
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import art.rippledesign.compose.rui.reportPageScrollable
 import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.core.designsystem.LibraryLoading
 import com.berryos.music.core.designsystem.LibraryMessage
 import com.berryos.music.core.designsystem.formatDuration
-import com.berryos.music.core.designsystem.reportPageScrollable
 import com.berryos.music.core.library.LibraryUiState
 import com.berryos.music.core.playback.PlaybackSource
 import com.berryos.music.resources.Res

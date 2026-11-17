@@ -3,10 +3,8 @@
 package com.berryos.music.app
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -59,8 +57,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
+import art.rippledesign.compose.rui.LocalPageScrollable
+import art.rippledesign.compose.rui.LocalTopBarOffsetPx
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
+import art.rippledesign.compose.rui.rememberRAppBarScrollBehavior
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
@@ -79,12 +80,11 @@ import com.berryos.music.app.navigation.ServerEditRoute
 import com.berryos.music.app.navigation.ServersRoute
 import com.berryos.music.app.navigation.SettingsRoute
 import com.berryos.music.app.navigation.SongsRoute
+import com.berryos.music.app.navigation.TrackMetadataRoute
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.CoverPaletteDialog
-import com.berryos.music.core.designsystem.LocalPageScrollable
-import com.berryos.music.core.designsystem.LocalTopBarOffsetPx
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -103,6 +103,7 @@ import com.berryos.music.resources.appearance
 import com.berryos.music.resources.artist
 import com.berryos.music.resources.folder
 import com.berryos.music.resources.library
+import com.berryos.music.resources.metadata
 import com.berryos.music.resources.playback
 import com.berryos.music.resources.playlist
 import com.berryos.music.resources.search
@@ -114,13 +115,11 @@ import com.berryos.music.resources.tab_artists
 import com.berryos.music.resources.tab_home
 import com.berryos.music.resources.tab_playlists
 import com.berryos.music.resources.tab_songs
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.abs
 
 @Suppress("LongMethod", "CyclomaticComplexMethod")
 @OptIn(ExperimentalMaterialApi::class)
@@ -209,11 +208,8 @@ internal fun AppChrome(
         miniPlayerHeight = miniPlayerHeight,
         railWidth = railWidth,
     )
-    // MDC AppBarLayout: the scroll first moves the bar (the delta is consumed), and the page
-    // content area follows the bar's bottom edge, so the freed space is filled instead of leaving
-    // a gap. Releasing mid-way snaps to the nearer edge with MDC's decelerate animation. The
-    // offset is kept per route: returning to a scrolled page restores its hidden bar, while a
-    // newly opened page starts with the bar visible.
+    // The app bar behavior lives in RUI; the offsets are kept per route here: returning to a
+    // scrolled page restores its hidden bar, while a newly opened page starts with it visible.
     val topBarOffsets = remember { mutableStateMapOf<Any, Float>() }
     val topBarHeightPx = with(density) { topBarHeight.toPx() }
     val topBarHeightState = rememberUpdatedState(topBarHeightPx)
@@ -222,14 +218,20 @@ internal fun AppChrome(
     val pageScrollable = remember { mutableStateOf(true) }
     var previousRouteKey by remember { mutableStateOf<Any?>(null) }
     // A detail route inherits the bar position of the page it was opened from, so the bar keeps
-    // its state while the transform runs instead of jumping to visible under it. Other routes
-    // start with the bar visible.
+    // its state while the transform runs instead of jumping to visible under it.
     val inheritedOffsetPx = previousRouteKey?.let { topBarOffsets[it] } ?: 0f
     val fallbackOffsetPx = if (isDetailRoute) inheritedOffsetPx else 0f
-    var topBarSnapJob by remember { mutableStateOf<Job?>(null) }
-    val chromeScope = rememberCoroutineScope()
+    // Detail pages draw their own top bar and fill the screen, so the global bar does not follow
+    // their scroll.
+    val detailRouteState = rememberUpdatedState(isDetailRoute)
+    val appBarScroll = rememberRAppBarScrollBehavior(
+        barHeightPx = { topBarHeightState.value },
+        enabled = { !detailRouteState.value && pageScrollable.value },
+        offset = { topBarOffsets[routeState.value] ?: 0f },
+        onOffsetChange = { topBarOffsets[routeState.value] = it },
+    )
     LaunchedEffect(routeKey) {
-        topBarSnapJob?.cancel()
+        appBarScroll.cancelSnap()
         val previous = previousRouteKey
         if (previous != null && previous != routeKey) {
             // A snap may still be running when the user opens another page; settle the old page to
@@ -245,14 +247,11 @@ internal fun AppChrome(
         }
         previousRouteKey = routeKey
     }
-    fun setTopBarOffset(offsetPx: Float) {
-        topBarOffsets[routeState.value] = offsetPx.coerceIn(0f, topBarHeightState.value)
-    }
     // A page whose content fits keeps its bar visible; this also clears an offset restored for a
     // page whose content has since become shorter than the viewport.
     LaunchedEffect(routeKey, pageScrollable.value) {
         if (!pageScrollable.value && !isDetailRoute) {
-            topBarSnapJob?.cancel()
+            appBarScroll.cancelSnap()
             topBarOffsets[routeKey] = 0f
         }
     }
@@ -261,36 +260,18 @@ internal fun AppChrome(
         derivedStateOf { (topBarOffsets[routeState.value] ?: 0f).coerceIn(0f, topBarHeightState.value) }
     }
     val topContentInset = with(density) { (topBarHeightPx - topBarOffsetPx).coerceAtLeast(0f).toDp() }
-    // Detail pages draw their own top bar and fill the screen, so the global bar does not follow
-    // their scroll.
-    val detailRouteState = rememberUpdatedState(isDetailRoute)
     val thresholdPx = with(density) { CHROME_SCROLL_THRESHOLD.toPx() }
-    val hideOnScroll = remember(thresholdPx) {
+    // The app bar comes from RUI (pre-scroll + snap); the bottom bar keeps its own debounced
+    // toggle driven by the content's consumed scroll.
+    val hideOnScroll = remember(appBarScroll, thresholdPx) {
         object : NestedScrollConnection {
             private var accumulated = 0f
 
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                val height = topBarHeightState.value
-                if (detailRouteState.value || !pageScrollable.value || height <= 0f) return Offset.Zero
-                val current = topBarOffsets[routeState.value] ?: 0f
-                val consumed = if (available.y < 0f) {
-                    maxOf(available.y, -(height - current))
-                } else if (available.y > 0f) {
-                    minOf(available.y, current)
-                } else {
-                    0f
-                }
-                if (consumed != 0f) {
-                    topBarSnapJob?.cancel()
-                    setTopBarOffset(current - consumed)
-                }
-                return Offset(0f, consumed)
-            }
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                appBarScroll.nestedScrollConnection.onPreScroll(available, source)
 
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                snapTopBar()
-                return Velocity.Zero
-            }
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                appBarScroll.nestedScrollConnection.onPostFling(consumed, available)
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
                 if (consumed.y == 0f) return Offset.Zero
@@ -305,22 +286,6 @@ internal fun AppChrome(
                     accumulated = 0f
                 }
                 return Offset.Zero
-            }
-
-            private fun snapTopBar() {
-                if (detailRouteState.value) return
-                val height = topBarHeightState.value
-                val key = routeState.value
-                val current = topBarOffsets[key] ?: 0f
-                if (height <= 0f || current <= 0f || current >= height) return
-                val target = if (current > height / 2f) height else 0f
-                val duration = (((abs(target - current) / height) + 1f) * MDC_SNAP_MILLIS).toInt()
-                topBarSnapJob?.cancel()
-                topBarSnapJob = chromeScope.launch {
-                    animate(current, target, animationSpec = tween(duration, easing = DecelerateEasing)) { value, _ ->
-                        topBarOffsets[key] = value.coerceIn(0f, height)
-                    }
-                }
             }
         }
     }
@@ -645,6 +610,7 @@ private fun routeTitle(route: NavKey?): String {
         is ArtistRoute -> Res.string.artist
         is PlaylistRoute -> Res.string.playlist
         is FolderRoute -> Res.string.folder
+        is TrackMetadataRoute -> Res.string.metadata
         is ServerEditRoute -> if (route.serverId == null) Res.string.add_server else Res.string.server
         else -> staticRouteTitles[route]
     }
@@ -653,10 +619,6 @@ private fun routeTitle(route: NavKey?): String {
 
 private const val CHROME_HIDE_MILLIS = 175
 private const val CHROME_SHOW_MILLIS = 225
-private const val MDC_SNAP_MILLIS = 150
 private const val MINI_PLAYER_ENTER_MILLIS = 250
 private const val MINI_PLAYER_EXIT_MILLIS = 200
 private val CHROME_SCROLL_THRESHOLD = 12.dp
-
-/** MDC's DecelerateInterpolator, used for the app bar snap. */
-private val DecelerateEasing = Easing { fraction -> 1f - (1f - fraction) * (1f - fraction) }
