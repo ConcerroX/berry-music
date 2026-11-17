@@ -53,6 +53,7 @@ import com.berryos.music.app.navigation.ServerEditRoute
 import com.berryos.music.app.navigation.ServersRoute
 import com.berryos.music.app.navigation.SettingsRoute
 import com.berryos.music.app.navigation.SongsRoute
+import com.berryos.music.app.navigation.TrackMetadataRoute
 import com.berryos.music.app.navigation.albumTransformKey
 import com.berryos.music.app.navigation.artistTransformKey
 import com.berryos.music.core.datastore.AppSettingsRepository
@@ -70,6 +71,7 @@ import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.albums.AlbumsScreen
 import com.berryos.music.feature.artist.ArtistScreen
 import com.berryos.music.feature.artists.ArtistsScreen
+import com.berryos.music.feature.detail.TrackMetadataScreen
 import com.berryos.music.feature.folder.FolderScreen
 import com.berryos.music.feature.home.HomeScreen
 import com.berryos.music.feature.playlist.PlaylistScreen
@@ -261,6 +263,15 @@ private fun AppNavDisplay(
             }
             entry<PlaylistRoute> { route -> PaddedScreen(pushedPadding) { PlaylistScreen(route.playlistId) } }
             entry<FolderRoute> { route -> PaddedScreen(pushedPadding) { FolderScreen(route.folderId) } }
+            entry<TrackMetadataRoute> { route ->
+                PaddedScreen(pushedPadding) {
+                    val track = (libraryState as? LibraryUiState.Ready)
+                        ?.snapshot
+                        ?.tracks
+                        ?.firstOrNull { it.source == route.source && it.id == route.trackId }
+                    TrackMetadataScreen(track)
+                }
+            }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }
             entry<PlaybackSettingsRoute> { PaddedScreen(pushedPadding) { PlaybackSettingsScreen() } }
             entry<LibrarySettingsRoute> { PaddedScreen(pushedPadding) { LibrarySettingsScreen() } }
