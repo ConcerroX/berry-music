@@ -74,13 +74,30 @@
     <string name="unknown_album">Unknown album</string>
 
     <string name="metadata">Metadata</string>
-    <string name="metadata_title">Title</string>
-    <string name="metadata_artist">Artist</string>
-    <string name="metadata_album">Album</string>
-    <string name="metadata_track_number">Track number</string>
-    <string name="metadata_year">Year</string>
-    <string name="metadata_duration">Duration</string>
     <string name="track_not_found">Track not found.</string>
+    <string name="metadata_only_local">Tag inspection is available for local files only.</string>
+    <string name="metadata_failed">Could not read metadata.</string>
+    <string name="metadata_tag_type">Tag type</string>
+    <string name="metadata_no_tag">No tags</string>
+    <string name="metadata_binary">Binary data</string>
+    <string name="metadata_field_title">Title</string>
+    <string name="metadata_field_artist">Artist</string>
+    <string name="metadata_field_album">Album</string>
+    <string name="metadata_field_album_artist">Album Artist</string>
+    <string name="metadata_field_composer">Composer</string>
+    <string name="metadata_field_lyricist">Lyricist</string>
+    <string name="metadata_field_genre">Genre</string>
+    <string name="metadata_field_language">Language</string>
+    <string name="metadata_field_date">Date</string>
+    <string name="metadata_field_rating">Rating</string>
+    <string name="metadata_field_track_number">Track number</string>
+    <string name="metadata_field_track_total">Track total</string>
+    <string name="metadata_field_disc_number">Disc number</string>
+    <string name="metadata_field_disc_total">Disc total</string>
+    <string name="metadata_field_lyrics">Lyrics</string>
+    <string name="metadata_field_artwork">Attached picture</string>
+    <string name="metadata_field_with_key">%1$s (%2$s)</string>
+    <string name="metadata_picture_type">Type %1$d</string>
 
     <string name="folder_id">Folder id: %1$s</string>
     <string name="playlist_id">Playlist id: %1$s</string>
@@ -92,6 +109,8 @@
     <string name="search_subtitle">Local and Subsonic search results.</string>
     <string name="playlists_subtitle">Playlist list.</string>
     <string name="collapse_player_on_pause">Collapse player when paused</string>
+    <string name="metadata_and_lyrics">Metadata and lyrics</string>
+    <string name="show_technical_details">Show technical details</string>
     <string name="playback_subtitle">Audio focus, resume, and crossfade.</string>
     <string name="library_subtitle">Scanning, filters, and excluded folders.</string>
     <string name="servers_subtitle">Subsonic server list and connection status.</string>

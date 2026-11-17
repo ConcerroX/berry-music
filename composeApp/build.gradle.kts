@@ -52,6 +52,7 @@ kotlin {
         }
 
         androidMain.dependencies {
+            implementation("com.berryos:kotlin-audio-metadata:0.1.0-SNAPSHOT")
             implementation(libs.androidx.media3.exoplayer)
             implementation(libs.androidx.media3.session)
             implementation(libs.androidx.palette)

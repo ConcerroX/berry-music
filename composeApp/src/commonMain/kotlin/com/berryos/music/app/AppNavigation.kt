@@ -31,6 +31,7 @@ import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationEventHandler
 import art.rippledesign.compose.rui.fadeThrough
 import art.rippledesign.compose.rui.navigation3.LocalRContainerTransformNavigationEventState
+import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavEntry
 import art.rippledesign.compose.rui.navigation3.rContainerTransformTransition
 import art.rippledesign.compose.rui.navigation3.rememberRContainerTransformNavController
@@ -62,6 +63,7 @@ import com.berryos.music.core.designsystem.cachedCoverBackground
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.designsystem.withContainerColor
 import com.berryos.music.core.library.LibraryUiState
+import com.berryos.music.core.model.SourceKey
 import com.berryos.music.core.model.album
 import com.berryos.music.core.model.artist
 import com.berryos.music.core.playback.PlaybackPosition
@@ -188,21 +190,15 @@ private fun AppNavDisplay(
             entry<AlbumRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetAlbum),
             ) { route ->
-                val coverUrl = (libraryState as? LibraryUiState.Ready)
-                    ?.snapshot
-                    ?.album(route.source, route.albumId)
-                    ?.coverUrl
-                val defaultColors = rememberDefaultCoverColors()
-                // Frozen per entry: a palette that arrives after the tap must not change the
-                // surface color mid-animation.
-                val containerColor = remember(route) {
-                    cachedCoverBackground(coverUrl) ?: defaultColors?.background
-                }
-                RContainerTransformNavEntry(
-                    key = albumTransformKey(route.source, route.albumId),
+                TransformEntry(
+                    route = route,
+                    coverUrl = libraryState.albumCoverUrl(route.source, route.albumId),
+                    transformKey = albumTransformKey(route.source, route.albumId),
                     controller = controller,
-                    spec = ContainerTransformSpec.withContainerColor(containerColor),
-                ) {
+                    showMiniPlayer = showMiniPlayer,
+                    miniPlayerHeight = chromeMetrics.miniPlayerHeight,
+                    sessionActive = playbackState.source == PlaybackSource.Album(route.albumId),
+                ) { bottomInset ->
                     AlbumScreen(
                         route.source,
                         route.albumId,
@@ -211,14 +207,7 @@ private fun AppNavDisplay(
                         playbackState,
                         playbackPosition,
                         collapseOnPause,
-                        bottomInset = if (
-                            showMiniPlayer &&
-                            playbackState.source != PlaybackSource.Album(route.albumId)
-                        ) {
-                            chromeMetrics.miniPlayerHeight
-                        } else {
-                            0.dp
-                        },
+                        bottomInset = bottomInset,
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )
                 }
@@ -226,21 +215,15 @@ private fun AppNavDisplay(
             entry<ArtistRoute>(
                 metadata = mapOf(CONTAINER_TRANSFORM_TAG_KEY to ContainerTransformTag.TargetArtist),
             ) { route ->
-                val coverUrl = (libraryState as? LibraryUiState.Ready)
-                    ?.snapshot
-                    ?.artist(route.source, route.artistId)
-                    ?.coverUrl
-                val defaultColors = rememberDefaultCoverColors()
-                // Frozen per entry: a palette that arrives after the tap must not change the
-                // surface color mid-animation.
-                val containerColor = remember(route) {
-                    cachedCoverBackground(coverUrl) ?: defaultColors?.background
-                }
-                RContainerTransformNavEntry(
-                    key = artistTransformKey(route.source, route.artistId),
+                TransformEntry(
+                    route = route,
+                    coverUrl = libraryState.artistCoverUrl(route.source, route.artistId),
+                    transformKey = artistTransformKey(route.source, route.artistId),
                     controller = controller,
-                    spec = ContainerTransformSpec.withContainerColor(containerColor),
-                ) {
+                    showMiniPlayer = showMiniPlayer,
+                    miniPlayerHeight = chromeMetrics.miniPlayerHeight,
+                    sessionActive = playbackState.source == PlaybackSource.Artist(route.artistId),
+                ) { bottomInset ->
                     ArtistScreen(
                         route.source,
                         route.artistId,
@@ -249,14 +232,7 @@ private fun AppNavDisplay(
                         playbackState,
                         playbackPosition,
                         collapseOnPause,
-                        bottomInset = if (
-                            showMiniPlayer &&
-                            playbackState.source != PlaybackSource.Artist(route.artistId)
-                        ) {
-                            chromeMetrics.miniPlayerHeight
-                        } else {
-                            0.dp
-                        },
+                        bottomInset = bottomInset,
                         topBar = { contentColor -> DetailTopBar(actions, contentColor, onCoverPalette) },
                     )
                 }
@@ -269,7 +245,7 @@ private fun AppNavDisplay(
                         ?.snapshot
                         ?.tracks
                         ?.firstOrNull { it.source == route.source && it.id == route.trackId }
-                    TrackMetadataScreen(track)
+                    TrackMetadataScreen(track, settings)
                 }
             }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }
@@ -344,6 +320,39 @@ private fun AppNavDisplay(
         }
     }
 }
+
+@Composable
+private fun TransformEntry(
+    route: NavKey,
+    coverUrl: String?,
+    transformKey: ContainerTransformKey,
+    controller: RContainerTransformNavController<ContainerTransformKey>,
+    showMiniPlayer: Boolean,
+    miniPlayerHeight: Dp,
+    sessionActive: Boolean,
+    content: @Composable (bottomInset: Dp) -> Unit,
+) {
+    val defaultColors = rememberDefaultCoverColors()
+    // Frozen per entry: a palette that arrives after the tap must not change the surface color
+    // mid-animation.
+    val containerColor = remember(route) {
+        cachedCoverBackground(coverUrl) ?: defaultColors?.background
+    }
+    val bottomInset = if (showMiniPlayer && !sessionActive) miniPlayerHeight else 0.dp
+    RContainerTransformNavEntry(
+        key = transformKey,
+        controller = controller,
+        spec = ContainerTransformSpec.withContainerColor(containerColor),
+    ) {
+        content(bottomInset)
+    }
+}
+
+internal fun LibraryUiState.albumCoverUrl(source: SourceKey, albumId: String): String? =
+    (this as? LibraryUiState.Ready)?.snapshot?.album(source, albumId)?.coverUrl
+
+internal fun LibraryUiState.artistCoverUrl(source: SourceKey, artistId: String): String? =
+    (this as? LibraryUiState.Ready)?.snapshot?.artist(source, artistId)?.coverUrl
 
 private const val CONTAINER_TRANSFORM_TAG_KEY = "berry.containerTransformTag"
 

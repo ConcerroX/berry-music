@@ -28,6 +28,7 @@ class DataStoreAppSettingsRepository(context: Context) : AppSettingsRepository {
             dataStore.data.collect { preferences ->
                 _settings.value = AppSettings(
                     collapsePlayerOnPause = preferences[CollapsePlayerOnPauseKey] ?: false,
+                    showTechnicalDetails = preferences[ShowTechnicalDetailsKey] ?: false,
                 )
             }
         }
@@ -39,8 +40,15 @@ class DataStoreAppSettingsRepository(context: Context) : AppSettingsRepository {
         }
     }
 
+    override fun setShowTechnicalDetails(enabled: Boolean) {
+        scope.launch {
+            dataStore.edit { preferences -> preferences[ShowTechnicalDetailsKey] = enabled }
+        }
+    }
+
     companion object {
         private val CollapsePlayerOnPauseKey = booleanPreferencesKey("collapse_player_on_pause")
+        private val ShowTechnicalDetailsKey = booleanPreferencesKey("show_technical_details")
         private const val SETTINGS_FILE = "datastore/settings.preferences_pb"
     }
 }
