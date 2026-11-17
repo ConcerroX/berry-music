@@ -2,9 +2,12 @@ package com.berryos.music.core.metadata
 
 import com.berryos.music.core.model.Track
 
-/** Reads the tag metadata stored in a track's file without modifying it. */
+/** Reads and writes the tag metadata stored in a track's file. */
 interface TrackTagRepository {
     suspend fun inspect(track: Track): TrackTagInspection
+
+    /** Writes [edits] back to the file; empty values remove the corresponding field. */
+    suspend fun save(track: Track, edits: Map<TrackTagField, String>)
 }
 
 /** One tag container found in the file, shown as technical information. */

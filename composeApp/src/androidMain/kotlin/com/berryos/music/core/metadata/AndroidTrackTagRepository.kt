@@ -13,7 +13,7 @@ import com.berryos.audiometadata.Id3Version
 import com.berryos.audiometadata.TagContainer
 import com.berryos.audiometadata.id3.Id3v2FrameIds
 import com.berryos.audiometadata.id3.Id3v2Tag
-import com.berryos.audiometadata.io.RandomAccessSource
+import com.berryos.audiometadata.io.WritableRandomAccessSource
 import com.berryos.audiometadata.mp4.Mp4Item
 import com.berryos.audiometadata.mp4.Mp4ItemIds
 import com.berryos.audiometadata.mp4.Mp4Tag
@@ -34,6 +34,18 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
         resolver.openFileDescriptor(audioUri(mediaId), "r")?.use { descriptor ->
             val audio = AudioFile.read(FileDescriptorSource(descriptor), includeArtworks = false)
             audio?.toInspection() ?: TrackTagInspection(tagType = null, entries = emptyList())
+        } ?: throw IllegalStateException("Unable to open the audio file")
+    }
+
+    override suspend fun save(track: Track, edits: Map<TrackTagField, String>): Unit = withContext(Dispatchers.IO) {
+        val mediaId = track.id.toLongOrNull()
+            ?: throw IllegalArgumentException("Track id is not a MediaStore id")
+        resolver.openFileDescriptor(audioUri(mediaId), "rw")?.use { descriptor ->
+            val source = FileDescriptorSource(descriptor)
+            val audio = AudioFile.read(source, includeArtworks = false)
+                ?: throw IllegalStateException("Unable to read the audio file")
+            audio.applyEdits(edits)
+            audio.save(source)
         } ?: throw IllegalStateException("Unable to open the audio file")
     }
 }
@@ -177,7 +189,7 @@ private fun trackTagField(key: String): TrackTagField? = when (key.lowercase()) 
     else -> null
 }
 
-private fun audioUri(mediaId: Long): Uri {
+internal fun audioUri(mediaId: Long): Uri {
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
     } else {
@@ -186,9 +198,10 @@ private fun audioUri(mediaId: Long): Uri {
     return ContentUris.withAppendedId(collection, mediaId)
 }
 
-private class FileDescriptorSource(descriptor: ParcelFileDescriptor) : RandomAccessSource {
+private class FileDescriptorSource(descriptor: ParcelFileDescriptor) : WritableRandomAccessSource {
     private val fd: FileDescriptor = descriptor.fileDescriptor
-    override val size: Long = Os.fstat(fd).st_size
+    override val size: Long
+        get() = Os.fstat(fd).st_size
 
     override fun readAt(offset: Long, destination: ByteArray, destinationOffset: Int, length: Int): Int {
         require(offset >= 0) { "offset must not be negative" }
@@ -203,6 +216,27 @@ private class FileDescriptorSource(descriptor: ParcelFileDescriptor) : RandomAcc
             total += read
         }
         return total
+    }
+
+    override fun writeAt(offset: Long, source: ByteArray, sourceOffset: Int, length: Int) {
+        require(offset >= 0) { "offset must not be negative" }
+        require(sourceOffset >= 0 && length >= 0 && sourceOffset + length <= source.size) {
+            "invalid source range"
+        }
+        var total = 0
+        while (total < length) {
+            val written = Os.pwrite(fd, source, sourceOffset + total, length - total, offset + total)
+            if (written <= 0) error("Unable to write at ${offset + total}")
+            total += written
+        }
+    }
+
+    override fun truncate(size: Long) {
+        Os.ftruncate(fd, size)
+    }
+
+    override fun flush() {
+        Os.fsync(fd)
     }
 
     override fun close() = Unit

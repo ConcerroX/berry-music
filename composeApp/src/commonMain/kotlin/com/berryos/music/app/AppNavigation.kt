@@ -7,7 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -241,10 +245,15 @@ private fun AppNavDisplay(
             entry<FolderRoute> { route -> PaddedScreen(pushedPadding) { FolderScreen(route.folderId) } }
             entry<TrackMetadataRoute> { route ->
                 PaddedScreen(pushedPadding) {
-                    val track = (libraryState as? LibraryUiState.Ready)
+                    val resolved = (libraryState as? LibraryUiState.Ready)
                         ?.snapshot
                         ?.tracks
                         ?.firstOrNull { it.source == route.source && it.id == route.trackId }
+                    // Keep the last resolved track while the library reloads after a save.
+                    var track by remember(route) { mutableStateOf(resolved) }
+                    LaunchedEffect(resolved) {
+                        if (resolved != null) track = resolved
+                    }
                     TrackMetadataScreen(track, settings)
                 }
             }

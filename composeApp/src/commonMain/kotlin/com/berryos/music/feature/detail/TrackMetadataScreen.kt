@@ -1,5 +1,8 @@
 package com.berryos.music.feature.detail
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,23 +13,26 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.reportPageScrollable
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.LibraryLoading
+import com.berryos.music.core.designsystem.LocalAppBarActionState
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.metadata.TagEntry
 import com.berryos.music.core.metadata.TrackTagField
-import com.berryos.music.core.metadata.TrackTagInspection
+import com.berryos.music.core.metadata.rememberTrackTagWritePermission
 import com.berryos.music.core.model.Track
 import com.berryos.music.resources.Res
 import com.berryos.music.resources.metadata
-import com.berryos.music.resources.metadata_binary
 import com.berryos.music.resources.metadata_field_album
 import com.berryos.music.resources.metadata_field_album_artist
 import com.berryos.music.resources.metadata_field_artist
@@ -58,8 +64,22 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
     LaunchedEffect(track) { viewModel.open(track) }
     val state by viewModel.state.collectAsState()
     val appSettings by settings.settings.collectAsState()
+    val appBarState = LocalAppBarActionState.current
+    val writePermission = rememberTrackTagWritePermission()
+    val canSave = (state as? TrackTagUiState.Ready)?.let { it.dirty && !it.saving } == true
+    val saveState = rememberUpdatedState<() -> Unit>({
+        track?.let { writePermission.request(it) { viewModel.save() } }
+    })
+    DisposableEffect(appBarState) {
+        appBarState?.onSave = { saveState.value() }
+        onDispose {
+            appBarState?.onSave = null
+            appBarState?.saveEnabled = false
+        }
+    }
+    SideEffect { appBarState?.saveEnabled = canSave }
     when (val current = state) {
-        TrackTagUiState.Loading -> LibraryLoading()
+        TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())
 
         TrackTagUiState.Missing -> PlaceholderScreen(
             stringResource(Res.string.metadata),
@@ -73,56 +93,161 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
 
         is TrackTagUiState.Error -> PlaceholderScreen(stringResource(Res.string.metadata), current.message)
 
-        is TrackTagUiState.Ready -> TagInspectionList(current.inspection, appSettings.showTechnicalDetails)
+        is TrackTagUiState.Ready -> TagInspectionList(
+            state = current,
+            showTechnicalDetails = appSettings.showTechnicalDetails,
+            onEdit = viewModel::edit,
+        )
     }
 }
 
 @Composable
-private fun TagInspectionList(inspection: TrackTagInspection, showTechnicalDetails: Boolean) {
+private fun TagInspectionList(
+    state: TrackTagUiState.Ready,
+    showTechnicalDetails: Boolean,
+    onEdit: (TrackTagField, String) -> Unit,
+) {
+    val inspection = state.inspection
     val listState = rememberLazyListState()
     listState.reportPageScrollable()
+    val rows = remember(inspection.entries) { inspection.entries.distinctEditableFields().toRows() }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         if (showTechnicalDetails) {
             item {
                 TagTextField(
                     label = stringResource(Res.string.metadata_tag_type),
                     value = inspection.tagType ?: stringResource(Res.string.metadata_no_tag),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                     italic = true,
                 )
             }
         }
-        items(inspection.entries) { entry -> EntryRow(entry, showTechnicalDetails) }
+        if (state.error != null) {
+            item {
+                Text(
+                    text = state.error,
+                    color = MaterialTheme.colors.error,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+        }
+        items(rows) { row ->
+            when (row) {
+                is TagEntryRow.Single -> EntryRow(
+                    entry = row.entry,
+                    showTechnicalDetails = showTechnicalDetails,
+                    editState = state,
+                    onEdit = onEdit,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
+                is TagEntryRow.Pair -> EntryPairRow(row.first, row.second, showTechnicalDetails, state, onEdit)
+            }
+        }
     }
 }
 
 @Composable
-private fun TagTextField(label: String, value: String, modifier: Modifier = Modifier, italic: Boolean = false) {
+private fun TagTextField(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    italic: Boolean = false,
+    editable: Boolean = false,
+    onValueChange: (String) -> Unit = {},
+) {
     OutlinedTextField(
         value = value,
-        onValueChange = {},
-        readOnly = true,
+        onValueChange = onValueChange,
+        readOnly = !editable,
         label = { Text(label) },
         maxLines = FIELD_MAX_LINES,
         textStyle = MaterialTheme.typography.body1.copy(
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
         ),
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = modifier,
     )
 }
 
 @Composable
-private fun EntryRow(entry: TagEntry, showTechnicalDetails: Boolean) {
+private fun EntryRow(
+    entry: TagEntry,
+    showTechnicalDetails: Boolean,
+    editState: TrackTagUiState.Ready,
+    onEdit: (TrackTagField, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val picture = entry.picture
     if (picture != null) {
         val typeText = stringResource(Res.string.metadata_picture_type, picture.type)
         val value = listOfNotNull(typeText, picture.mimeType, picture.description).joinToString(" · ")
-        TagTextField(label = entryLabel(entry, showTechnicalDetails), value = value, italic = true)
+        TagTextField(label = entryLabel(entry, showTechnicalDetails), value = value, modifier = modifier, italic = true)
     } else {
+        val field = entry.field
+        val editable = field != null
         TagTextField(
             label = entryLabel(entry, showTechnicalDetails),
-            value = entry.value ?: stringResource(Res.string.metadata_binary),
+            value = field?.let { editState.edits[it] } ?: entry.value.orEmpty(),
+            modifier = modifier,
+            editable = editable,
+            onValueChange = { value -> field?.let { onEdit(it, value) } },
         )
     }
+}
+
+@Composable
+private fun EntryPairRow(
+    first: TagEntry,
+    second: TagEntry,
+    showTechnicalDetails: Boolean,
+    editState: TrackTagUiState.Ready,
+    onEdit: (TrackTagField, String) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        EntryRow(first, showTechnicalDetails, editState, onEdit, Modifier.weight(1f))
+        EntryRow(second, showTechnicalDetails, editState, onEdit, Modifier.weight(1f))
+    }
+}
+
+private sealed interface TagEntryRow {
+    data class Single(val entry: TagEntry) : TagEntryRow
+    data class Pair(val first: TagEntry, val second: TagEntry) : TagEntryRow
+}
+
+private fun List<TagEntry>.toRows(): List<TagEntryRow> {
+    val rows = ArrayList<TagEntryRow>(size)
+    var index = 0
+    while (index < size) {
+        val entry = this[index]
+        val partner = entry.field?.pairField()
+        val next = getOrNull(index + 1)
+        if (partner != null && next?.field == partner) {
+            rows += TagEntryRow.Pair(entry, next)
+            index += 2
+        } else {
+            rows += TagEntryRow.Single(entry)
+            index += 1
+        }
+    }
+    return rows
+}
+
+/** Editable fields already show one combined value from the edit state. */
+private fun List<TagEntry>.distinctEditableFields(): List<TagEntry> {
+    val seen = mutableSetOf<TrackTagField>()
+    return filter { entry ->
+        val field = entry.field
+        field == null || entry.picture != null || seen.add(field)
+    }
+}
+
+private fun TrackTagField.pairField(): TrackTagField? = when (this) {
+    TrackTagField.TRACK_NUMBER -> TrackTagField.TRACK_TOTAL
+    TrackTagField.DISC_NUMBER -> TrackTagField.DISC_TOTAL
+    else -> null
 }
 
 @Composable

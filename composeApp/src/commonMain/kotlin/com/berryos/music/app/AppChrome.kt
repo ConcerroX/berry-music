@@ -84,7 +84,9 @@ import com.berryos.music.app.navigation.TrackMetadataRoute
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
+import com.berryos.music.core.designsystem.AppBarActionState
 import com.berryos.music.core.designsystem.CoverPaletteDialog
+import com.berryos.music.core.designsystem.LocalAppBarActionState
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -286,6 +288,7 @@ internal fun AppChrome(
     }
     val topBarHidden = topBarOffsetPx >= topBarHeightPx - 0.5f
     val openDrawerAction: () -> Unit = { drawerScope.launch { scaffoldState.drawerState.open() } }
+    val appBarActionState = remember { AppBarActionState() }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
         // Only the mini player permanently occupies the bottom; the bar is allowed to cover the
@@ -315,6 +318,8 @@ internal fun AppChrome(
                         contentStart = contentStart,
                         offsetPx = topBarOffsetPx,
                         hidden = topBarHidden,
+                        onSave = appBarActionState.onSave,
+                        saveEnabled = appBarActionState.saveEnabled,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -341,6 +346,7 @@ internal fun AppChrome(
                 CompositionLocalProvider(
                     LocalPageScrollable provides pageScrollable,
                     LocalTopBarOffsetPx provides exposedTopBarOffset,
+                    LocalAppBarActionState provides appBarActionState,
                 ) {
                     TabContent(
                         tabs = tabs,
@@ -369,6 +375,8 @@ internal fun AppChrome(
                         contentStart = contentStart,
                         offsetPx = topBarOffsetPx,
                         hidden = topBarHidden,
+                        onSave = appBarActionState.onSave,
+                        saveEnabled = appBarActionState.saveEnabled,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -474,6 +482,8 @@ private fun BoxScope.TopBarOverlay(
     contentStart: Dp,
     offsetPx: Float,
     hidden: Boolean,
+    onSave: (() -> Unit)?,
+    saveEnabled: Boolean,
     onMeasured: (IntSize) -> Unit,
 ) {
     Box(
@@ -485,7 +495,7 @@ private fun BoxScope.TopBarOverlay(
             .padding(start = contentStart)
             .onSizeChanged(onMeasured),
     ) {
-        AppTopBar(title, onBack, openDrawer)
+        AppTopBar(title, onBack, openDrawer, onSave = onSave, saveEnabled = saveEnabled)
     }
 }
 

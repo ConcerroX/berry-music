@@ -1,13 +1,16 @@
 package com.berryos.music.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.ContentAlpha
 import androidx.compose.material.DropdownMenu
 import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.LocalContentAlpha
 import androidx.compose.material.LocalContentColor
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,8 +24,10 @@ import com.berryos.music.resources.cover_palette
 import com.berryos.music.resources.ic_arrow_back
 import com.berryos.music.resources.ic_menu
 import com.berryos.music.resources.ic_more_vert
+import com.berryos.music.resources.ic_save
 import com.berryos.music.resources.menu
 import com.berryos.music.resources.more_options
+import com.berryos.music.resources.save
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -36,6 +41,8 @@ internal fun AppTopBar(
     transparent: Boolean = false,
     contentColor: Color? = null,
     onCoverPalette: (() -> Unit)? = null,
+    onSave: (() -> Unit)? = null,
+    saveEnabled: Boolean = true,
     backIcon: DrawableResource = Res.drawable.ic_arrow_back,
     backLabel: StringResource = Res.string.back,
 ) {
@@ -73,7 +80,10 @@ internal fun AppTopBar(
         RTopAppBar(
             title = { title?.let { Text(it) } },
             navigationIcon = navIcon,
-            actions = { more?.invoke() },
+            actions = {
+                SaveAction(onSave, saveEnabled)
+                more?.invoke()
+            },
             backgroundColor = Color.Transparent,
             contentColor = contentColor ?: LocalContentColor.current,
             elevation = 0.dp,
@@ -82,8 +92,26 @@ internal fun AppTopBar(
         RTopAppBar(
             title = { title?.let { Text(it) } },
             navigationIcon = navIcon,
-            actions = { more?.invoke() },
+            actions = {
+                SaveAction(onSave, saveEnabled)
+                more?.invoke()
+            },
         )
+    }
+}
+
+@Composable
+private fun SaveAction(onSave: (() -> Unit)?, enabled: Boolean) {
+    if (onSave == null) return
+    IconButton(onClick = onSave, enabled = enabled) {
+        CompositionLocalProvider(
+            LocalContentAlpha provides if (enabled) ContentAlpha.high else ContentAlpha.disabled,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_save),
+                contentDescription = stringResource(Res.string.save),
+            )
+        }
     }
 }
 
