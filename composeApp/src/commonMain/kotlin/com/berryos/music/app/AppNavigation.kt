@@ -257,12 +257,7 @@ private fun AppNavDisplay(
                     LaunchedEffect(resolved) {
                         if (resolved != null) track = resolved
                     }
-                    TrackMetadataScreen(
-                        track,
-                        settings,
-                        startInLyrics = route.startInLyrics,
-                        ownerKey = route,
-                    )
+                    TrackMetadataScreen(track, settings, startInLyrics = route.startInLyrics)
                 }
             }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }

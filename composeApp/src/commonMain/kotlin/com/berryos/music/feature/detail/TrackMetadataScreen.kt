@@ -32,9 +32,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import art.rippledesign.compose.rui.LocalPageOwner
 import art.rippledesign.compose.rui.reportPageScrollable
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.LocalAppBarActionRegistry
+import com.berryos.music.core.designsystem.LocalPageChromeRegistry
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.metadata.TagEntry
 import com.berryos.music.core.metadata.TrackTagField
@@ -70,18 +71,17 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Suppress("LongMethod")
 @Composable
-fun TrackMetadataScreen(
-    track: Track?,
-    settings: AppSettingsRepository,
-    startInLyrics: Boolean = false,
-    ownerKey: Any,
-) {
+fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository, startInLyrics: Boolean = false) {
     val viewModel: TrackTagViewModel = koinViewModel()
     LaunchedEffect(track) { viewModel.open(track) }
     val state by viewModel.state.collectAsState()
     val appSettings by settings.settings.collectAsState()
-    val appBarRegistry = LocalAppBarActionRegistry.current
-    val appBarState = remember(appBarRegistry, ownerKey) { appBarRegistry?.state(ownerKey) }
+    val appBarRegistry = LocalPageChromeRegistry.current
+    val currentOwner = LocalPageOwner.current
+    val owner = remember { currentOwner }
+    val appBarState = remember(appBarRegistry, owner) {
+        if (appBarRegistry == null || owner == null) null else appBarRegistry.state(owner).actions
+    }
     val writePermission = rememberTrackTagWritePermission()
     var selectedTab by rememberSaveable {
         mutableIntStateOf(if (startInLyrics) TAB_LYRICS else TAB_METADATA)
@@ -96,7 +96,7 @@ fun TrackMetadataScreen(
     val saveState = rememberUpdatedState<() -> Unit>({
         track?.let { writePermission.request(it) { viewModel.save() } }
     })
-    DisposableEffect(appBarState, ownerKey) {
+    DisposableEffect(appBarState) {
         appBarState?.onSave = { saveState.value() }
         appBarState?.onTabSelected = { selectedTab = it }
         onDispose {

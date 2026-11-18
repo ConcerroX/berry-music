@@ -1,9 +1,8 @@
 package com.berryos.music.app
 
-import art.rippledesign.compose.rui.PageScrollStateRegistry
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
-import com.berryos.music.core.designsystem.AppBarActionRegistry
+import com.berryos.music.core.designsystem.PageChromeRegistry
 import com.berryos.music.core.model.SourceKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -13,72 +12,64 @@ import kotlin.test.assertTrue
 class ChromeStateTest {
     @Test
     fun pageScrollabilityIsScopedByOwner() {
-        val registry = PageScrollStateRegistry()
+        val registry = PageChromeRegistry()
         val albums = registry.state("albums")
         val album = registry.state("album")
 
-        albums.value = false
+        albums.scrollable.value = false
 
-        assertFalse(albums.value)
-        assertTrue(album.value)
+        assertFalse(albums.scrollable.value)
+        assertTrue(album.scrollable.value)
     }
 
     @Test
     fun appBarActionsAreScopedByOwner() {
-        val registry = AppBarActionRegistry()
+        val registry = PageChromeRegistry()
         val albums = registry.state("albums")
         val album = registry.state("album")
 
-        album.tabLabels = listOf("Metadata", "Lyrics")
-        album.saveEnabled = true
+        album.actions.tabLabels = listOf("Metadata", "Lyrics")
+        album.actions.saveEnabled = true
 
-        assertTrue(albums.tabLabels.isEmpty())
-        assertFalse(albums.saveEnabled)
+        assertTrue(albums.actions.tabLabels.isEmpty())
+        assertFalse(albums.actions.saveEnabled)
     }
 
     @Test
-    fun retainingRoutesDropsInactivePageActions() {
-        val registry = AppBarActionRegistry()
-        registry.state("album").tabLabels = listOf("Metadata", "Lyrics")
+    fun retainingRoutesDropsInactivePageState() {
+        val registry = PageChromeRegistry()
+        registry.state("album").scrollable.value = false
+        registry.state("album").actions.tabLabels = listOf("Metadata", "Lyrics")
 
         registry.retain(setOf("albums"))
 
-        assertTrue(registry.state("album").tabLabels.isEmpty())
-    }
-
-    @Test
-    fun retainingRoutesDropsInactivePages() {
-        val registry = PageScrollStateRegistry()
-        registry.state("album").value = false
-
-        registry.retain(setOf("albums"))
-
-        assertTrue(registry.state("album").value)
+        assertTrue(registry.state("album").scrollable.value)
+        assertTrue(registry.state("album").actions.tabLabels.isEmpty())
     }
 
     @Test
     fun offsetsForPoppedRoutesAreRemoved() {
         val album = AlbumRoute(SourceKey.Local, "album")
-        val offsets = mutableMapOf<Any, Float>(
-            AlbumsRoute to 0f,
-            album to 356f,
-        )
+        val registry = PageChromeRegistry()
+        registry.state(AlbumsRoute).updateTopBarOffset(0f)
+        registry.state(album).updateTopBarOffset(356f)
 
-        offsets.retainActiveRoutes(setOf(AlbumsRoute))
+        registry.retain(setOf(AlbumsRoute))
 
-        assertEquals(setOf<Any>(AlbumsRoute), offsets.keys)
+        assertEquals(0f, registry.state(album).topBarOffset)
+        assertFalse(registry.state(album).hasTopBarOffset)
     }
 
     @Test
     fun offsetsForActiveRoutesAreKept() {
         val album = AlbumRoute(SourceKey.Local, "album")
-        val offsets = mutableMapOf<Any, Float>(
-            AlbumsRoute to 0f,
-            album to 356f,
-        )
+        val registry = PageChromeRegistry()
+        registry.state(AlbumsRoute).updateTopBarOffset(0f)
+        registry.state(album).updateTopBarOffset(356f)
 
-        offsets.retainActiveRoutes(setOf(AlbumsRoute, album))
+        registry.retain(setOf(AlbumsRoute, album))
 
-        assertEquals(setOf<Any>(AlbumsRoute, album), offsets.keys)
+        assertEquals(356f, registry.state(album).topBarOffset)
+        assertTrue(registry.state(album).hasTopBarOffset)
     }
 }

@@ -18,16 +18,32 @@ class AppBarActionState {
     var onTabSelected: (Int) -> Unit = {}
 }
 
-/** Per-page action state; an outgoing page cannot overwrite the current page's bar. */
+/** Chrome state owned by one route: scrollability, bar offset and app bar actions. */
 @Stable
-class AppBarActionRegistry {
-    private val states = mutableStateMapOf<Any, AppBarActionState>()
+class PageChromeState {
+    val actions = AppBarActionState()
+    val scrollable = mutableStateOf(true)
+    var topBarOffset by mutableStateOf(0f)
+        private set
+    var hasTopBarOffset by mutableStateOf(false)
+        private set
 
-    fun state(owner: Any): AppBarActionState = states.getOrPut(owner) { AppBarActionState() }
+    fun updateTopBarOffset(offset: Float) {
+        topBarOffset = offset
+        hasTopBarOffset = true
+    }
+}
+
+/** Per-route chrome state; an outgoing page cannot overwrite the current page's chrome. */
+@Stable
+class PageChromeRegistry {
+    private val states = mutableStateMapOf<Any, PageChromeState>()
+
+    fun state(owner: Any): PageChromeState = states.getOrPut(owner) { PageChromeState() }
 
     fun retain(owners: Set<Any>) {
         states.keys.retainAll(owners)
     }
 }
 
-val LocalAppBarActionRegistry = staticCompositionLocalOf<AppBarActionRegistry?> { null }
+val LocalPageChromeRegistry = staticCompositionLocalOf<PageChromeRegistry?> { null }
