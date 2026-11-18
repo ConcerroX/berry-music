@@ -208,8 +208,18 @@ internal fun AppChrome(
     // The app bar behavior lives in RUI; the offsets are kept per route here: returning to a
     // scrolled page restores its hidden bar, while a newly opened page starts with it visible.
     val topBarOffsets = remember { mutableStateMapOf<Any, Float>() }
+    val appBarActionState = remember { AppBarActionState() }
     val topBarHeightPx = with(density) { topBarHeight.toPx() }
     val topBarHeightState = rememberUpdatedState(topBarHeightPx)
+    // With tabs, only the title bar may scroll away; the tabs stay under the status bar.
+    val hasTabs = appBarActionState.tabLabels.isNotEmpty()
+    val tabsHeightPx = if (hasTabs) with(density) { TAB_ROW_HEIGHT.toPx() } else 0f
+    val scrollableBarHeightPx = if (hasTabs) {
+        (topBarHeightPx - tabsHeightPx - statusBarTop).coerceAtLeast(0f)
+    } else {
+        topBarHeightPx
+    }
+    val scrollableBarHeightState = rememberUpdatedState(scrollableBarHeightPx)
     val routeKey: Any = route ?: selectedTab
     val routeState = rememberUpdatedState(routeKey)
     val pageScrollable = remember { mutableStateOf(true) }
@@ -222,7 +232,7 @@ internal fun AppChrome(
     // their scroll.
     val detailRouteState = rememberUpdatedState(isDetailRoute)
     val appBarScroll = rememberRAppBarScrollBehavior(
-        barHeightPx = { topBarHeightState.value },
+        barHeightPx = { scrollableBarHeightState.value },
         enabled = { !detailRouteState.value && pageScrollable.value },
         offset = { topBarOffsets[routeState.value] ?: 0f },
         onOffsetChange = { topBarOffsets[routeState.value] = it },
@@ -233,7 +243,7 @@ internal fun AppChrome(
         if (previous != null && previous != routeKey) {
             // A snap may still be running when the user opens another page; settle the old page to
             // the nearer edge so it is never left partially collapsed.
-            val height = topBarHeightState.value
+            val height = scrollableBarHeightState.value
             val offset = topBarOffsets[previous] ?: 0f
             if (offset > 0f && offset < height) {
                 topBarOffsets[previous] = if (offset > height / 2f) height else 0f
@@ -252,9 +262,12 @@ internal fun AppChrome(
             topBarOffsets[routeKey] = 0f
         }
     }
-    val topBarOffsetPx = (topBarOffsets[routeKey] ?: fallbackOffsetPx).coerceIn(0f, topBarHeightPx)
+    val topBarOffsetPx = (topBarOffsets[routeKey] ?: fallbackOffsetPx)
+        .coerceIn(0f, scrollableBarHeightPx)
     val exposedTopBarOffset = remember {
-        derivedStateOf { (topBarOffsets[routeState.value] ?: 0f).coerceIn(0f, topBarHeightState.value) }
+        derivedStateOf {
+            (topBarOffsets[routeState.value] ?: 0f).coerceIn(0f, scrollableBarHeightState.value)
+        }
     }
     val topContentInset = with(density) { (topBarHeightPx - topBarOffsetPx).coerceAtLeast(0f).toDp() }
     val thresholdPx = with(density) { CHROME_SCROLL_THRESHOLD.toPx() }
@@ -286,9 +299,8 @@ internal fun AppChrome(
             }
         }
     }
-    val topBarHidden = topBarOffsetPx >= topBarHeightPx - 0.5f
+    val topBarHidden = !hasTabs && topBarOffsetPx >= topBarHeightPx - 0.5f
     val openDrawerAction: () -> Unit = { drawerScope.launch { scaffoldState.drawerState.open() } }
-    val appBarActionState = remember { AppBarActionState() }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
         // Only the mini player permanently occupies the bottom; the bar is allowed to cover the
@@ -320,6 +332,10 @@ internal fun AppChrome(
                         hidden = topBarHidden,
                         onSave = appBarActionState.onSave,
                         saveEnabled = appBarActionState.saveEnabled,
+                        tabLabels = appBarActionState.tabLabels,
+                        selectedTabIndex = appBarActionState.selectedTabIndex,
+                        selectedTabPosition = appBarActionState.selectedTabPosition,
+                        onTabSelected = appBarActionState.onTabSelected,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -377,6 +393,10 @@ internal fun AppChrome(
                         hidden = topBarHidden,
                         onSave = appBarActionState.onSave,
                         saveEnabled = appBarActionState.saveEnabled,
+                        tabLabels = appBarActionState.tabLabels,
+                        selectedTabIndex = appBarActionState.selectedTabIndex,
+                        selectedTabPosition = appBarActionState.selectedTabPosition,
+                        onTabSelected = appBarActionState.onTabSelected,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -484,6 +504,10 @@ private fun BoxScope.TopBarOverlay(
     hidden: Boolean,
     onSave: (() -> Unit)?,
     saveEnabled: Boolean,
+    tabLabels: List<String>,
+    selectedTabIndex: Int,
+    selectedTabPosition: Float,
+    onTabSelected: (Int) -> Unit,
     onMeasured: (IntSize) -> Unit,
 ) {
     Box(
@@ -495,7 +519,17 @@ private fun BoxScope.TopBarOverlay(
             .padding(start = contentStart)
             .onSizeChanged(onMeasured),
     ) {
-        AppTopBar(title, onBack, openDrawer, onSave = onSave, saveEnabled = saveEnabled)
+        AppTopBar(
+            title,
+            onBack,
+            openDrawer,
+            onSave = onSave,
+            saveEnabled = saveEnabled,
+            tabLabels = tabLabels,
+            selectedTabIndex = selectedTabIndex,
+            selectedTabPosition = selectedTabPosition,
+            onTabSelected = onTabSelected,
+        )
     }
 }
 
@@ -620,3 +654,4 @@ private const val CHROME_SHOW_MILLIS = 225
 private const val MINI_PLAYER_ENTER_MILLIS = 250
 private const val MINI_PLAYER_EXIT_MILLIS = 200
 private val CHROME_SCROLL_THRESHOLD = 12.dp
+private val TAB_ROW_HEIGHT = 48.dp

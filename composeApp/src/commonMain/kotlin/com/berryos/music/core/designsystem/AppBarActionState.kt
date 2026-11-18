@@ -11,6 +11,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 class AppBarActionState {
     var onSave: (() -> Unit)? by mutableStateOf(null)
     var saveEnabled: Boolean by mutableStateOf(false)
+    var tabLabels: List<String> by mutableStateOf(emptyList())
+    var selectedTabIndex: Int by mutableStateOf(0)
+    var selectedTabPosition: Float by mutableStateOf(0f)
+    var onTabSelected: (Int) -> Unit = {}
 }
 
 val LocalAppBarActionState = staticCompositionLocalOf<AppBarActionState?> { null }
