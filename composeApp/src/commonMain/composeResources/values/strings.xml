@@ -39,7 +39,8 @@
     <string name="collapse">Collapse</string>
     <string name="more_options">More options</string>
     <string name="play_next">Play next</string>
-    <string name="view_metadata">View metadata</string>
+    <string name="edit_metadata">Edit metadata</string>
+    <string name="edit_lyrics">Edit lyrics</string>
     <string name="queue">Queue</string>
     <string name="local_music">Local Music</string>
     <string name="account_service_name">Berry Live Music</string>
@@ -74,6 +75,7 @@
     <string name="unknown_artist">Unknown artist</string>
     <string name="unknown_album">Unknown album</string>
 
+    <string name="edit">Edit</string>
     <string name="metadata">Metadata</string>
     <string name="track_not_found">Track not found.</string>
     <string name="metadata_only_local">Tag inspection is available for local files only.</string>
@@ -81,6 +83,7 @@
     <string name="metadata_save_failed">Could not save metadata.</string>
     <string name="metadata_tag_type">Tag type</string>
     <string name="metadata_no_tag">No tags</string>
+    <string name="metadata_field_filename">Filename</string>
     <string name="metadata_field_title">Title</string>
     <string name="metadata_field_artist">Artist</string>
     <string name="metadata_field_album">Album</string>

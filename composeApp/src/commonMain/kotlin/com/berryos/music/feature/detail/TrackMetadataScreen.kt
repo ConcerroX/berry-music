@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.reportPageScrollable
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.LocalAppBarActionState
+import com.berryos.music.core.designsystem.LocalAppBarActionRegistry
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.metadata.TagEntry
 import com.berryos.music.core.metadata.TrackTagField
@@ -50,6 +50,7 @@ import com.berryos.music.resources.metadata_field_composer
 import com.berryos.music.resources.metadata_field_date
 import com.berryos.music.resources.metadata_field_disc_number
 import com.berryos.music.resources.metadata_field_disc_total
+import com.berryos.music.resources.metadata_field_filename
 import com.berryos.music.resources.metadata_field_genre
 import com.berryos.music.resources.metadata_field_language
 import com.berryos.music.resources.metadata_field_lyricist
@@ -67,15 +68,24 @@ import com.berryos.music.resources.track_not_found
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
+@Suppress("LongMethod")
 @Composable
-fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
+fun TrackMetadataScreen(
+    track: Track?,
+    settings: AppSettingsRepository,
+    startInLyrics: Boolean = false,
+    ownerKey: Any,
+) {
     val viewModel: TrackTagViewModel = koinViewModel()
     LaunchedEffect(track) { viewModel.open(track) }
     val state by viewModel.state.collectAsState()
     val appSettings by settings.settings.collectAsState()
-    val appBarState = LocalAppBarActionState.current
+    val appBarRegistry = LocalAppBarActionRegistry.current
+    val appBarState = remember(appBarRegistry, ownerKey) { appBarRegistry?.state(ownerKey) }
     val writePermission = rememberTrackTagWritePermission()
-    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var selectedTab by rememberSaveable {
+        mutableIntStateOf(if (startInLyrics) TAB_LYRICS else TAB_METADATA)
+    }
     val pagerState = rememberPagerState(initialPage = selectedTab, pageCount = { TAB_COUNT })
     val tabLabels = listOf(
         stringResource(Res.string.metadata),
@@ -86,7 +96,7 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
     val saveState = rememberUpdatedState<() -> Unit>({
         track?.let { writePermission.request(it) { viewModel.save() } }
     })
-    DisposableEffect(appBarState) {
+    DisposableEffect(appBarState, ownerKey) {
         appBarState?.onSave = { saveState.value() }
         appBarState?.onTabSelected = { selectedTab = it }
         onDispose {
@@ -99,10 +109,11 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
         }
     }
     SideEffect {
-        appBarState?.saveEnabled = canSave
-        appBarState?.tabLabels = tabLabels
-        appBarState?.selectedTabIndex = selectedTab
-        appBarState?.selectedTabPosition = tabPosition
+        val bar = appBarState ?: return@SideEffect
+        bar.saveEnabled = canSave
+        bar.tabLabels = tabLabels
+        bar.selectedTabIndex = selectedTab
+        bar.selectedTabPosition = tabPosition
     }
     when (val current = state) {
         TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())
@@ -125,6 +136,7 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository) {
             selectedTab = selectedTab,
             onSelectedTabChange = { selectedTab = it },
             showTechnicalDetails = appSettings.showTechnicalDetails,
+            onFilenameEdit = viewModel::editFilename,
             onEdit = viewModel::edit,
         )
     }
@@ -137,6 +149,7 @@ private fun TabbedContent(
     selectedTab: Int,
     onSelectedTabChange: (Int) -> Unit,
     showTechnicalDetails: Boolean,
+    onFilenameEdit: (String) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     LaunchedEffect(pagerState.currentPage) {
@@ -153,13 +166,14 @@ private fun TabbedContent(
         key = { it },
     ) { page ->
         when (page) {
-            0 -> TagInspectionList(
+            TAB_METADATA -> TagInspectionList(
                 state = state,
                 showTechnicalDetails = showTechnicalDetails,
+                onFilenameEdit = onFilenameEdit,
                 onEdit = onEdit,
             )
 
-            1 -> LyricsEditor(
+            TAB_LYRICS -> LyricsEditor(
                 state = state,
                 showTechnicalDetails = showTechnicalDetails,
                 onEdit = onEdit,
@@ -172,6 +186,7 @@ private fun TabbedContent(
 private fun TagInspectionList(
     state: TrackTagUiState.Ready,
     showTechnicalDetails: Boolean,
+    onFilenameEdit: (String) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     val inspection = state.inspection
@@ -182,6 +197,16 @@ private fun TagInspectionList(
     }
     val rows = remember(entries) { entries.distinctEditableFields().toRows() }
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+        item {
+            TagTextField(
+                label = stringResource(Res.string.metadata_field_filename),
+                value = state.filename,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                editable = true,
+                maxLines = 1,
+                onValueChange = onFilenameEdit,
+            )
+        }
         if (showTechnicalDetails) {
             item {
                 TagTextField(
@@ -379,4 +404,6 @@ private val FIELD_LABELS = mapOf(
 )
 
 private const val FIELD_MAX_LINES = 4
+private const val TAB_METADATA = 0
+private const val TAB_LYRICS = 1
 private const val TAB_COUNT = 2

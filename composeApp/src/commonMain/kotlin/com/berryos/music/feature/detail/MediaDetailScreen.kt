@@ -74,19 +74,21 @@ import com.berryos.music.core.playback.PlaybackState
 import com.berryos.music.core.playback.PlaybackStatus
 import com.berryos.music.core.playback.playbackStatus
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.edit_lyrics
+import com.berryos.music.resources.edit_metadata
 import com.berryos.music.resources.ic_more_vert
 import com.berryos.music.resources.ic_volume_up
 import com.berryos.music.resources.more_options
 import com.berryos.music.resources.play_next
 import com.berryos.music.resources.track_summary
 import com.berryos.music.resources.up_next_duration
-import com.berryos.music.resources.view_metadata
 import com.berryos.music.resources.volume_up
 import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+@Suppress("LongMethod")
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MediaDetailScreen(
@@ -156,7 +158,8 @@ fun MediaDetailScreen(
                     contentBottomInset = cardContentBottomInset,
                     cardExpanded = expansionState.expansion > 0f,
                     currentIndex = playbackState.currentIndex,
-                    onViewMetadata = { actions.open(TrackMetadataRoute(it.source, it.id)) },
+                    onEditMetadata = { actions.open(TrackMetadataRoute(it.source, it.id)) },
+                    onEditLyrics = { actions.open(TrackMetadataRoute(it.source, it.id, startInLyrics = true)) },
                 )
             },
         )
@@ -259,7 +262,8 @@ private fun TrackListCard(
     contentBottomInset: Dp,
     cardExpanded: Boolean,
     currentIndex: Int,
-    onViewMetadata: (Track) -> Unit,
+    onEditMetadata: (Track) -> Unit,
+    onEditLyrics: (Track) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val showCurrentTrack = currentTrack != null
@@ -301,7 +305,8 @@ private fun TrackListCard(
                                 showAlbum = playbackSource !is PlaybackSource.Album,
                                 totalDurationMs = tracks.sumOf { it.durationMs },
                                 onPlayNext = actions.playNext,
-                                onViewMetadata = onViewMetadata,
+                                onEditMetadata = onEditMetadata,
+                                onEditLyrics = onEditLyrics,
                             )
                         }
                     }
@@ -335,7 +340,8 @@ private fun TrackListCard(
                                 selected = queueOffset == 0,
                                 onClick = { actions.play(tracks, index, playbackSource) },
                                 onPlayNext = actions.playNext,
-                                onViewMetadata = onViewMetadata,
+                                onEditMetadata = onEditMetadata,
+                                onEditLyrics = onEditLyrics,
                             )
                             if (index < tracks.lastIndex) {
                                 Divider(modifier = Modifier.padding(start = TRACK_DIVIDER_INSET))
@@ -354,7 +360,8 @@ private fun CurrentTrackSection(
     showAlbum: Boolean,
     totalDurationMs: Long,
     onPlayNext: (Track) -> Unit,
-    onViewMetadata: (Track) -> Unit,
+    onEditMetadata: (Track) -> Unit,
+    onEditLyrics: (Track) -> Unit,
 ) {
     Column {
         TrackRow(
@@ -364,7 +371,8 @@ private fun CurrentTrackSection(
             // Tappable for consistency with the other rows; replaying the same track is a no-op.
             onClick = {},
             onPlayNext = onPlayNext,
-            onViewMetadata = onViewMetadata,
+            onEditMetadata = onEditMetadata,
+            onEditLyrics = onEditLyrics,
         )
         Divider(modifier = Modifier.padding(top = CURRENT_TRACK_DIVIDER_TOP_PADDING))
         Box(
@@ -432,7 +440,8 @@ private fun TrackRow(
     selected: Boolean = false,
     onClick: (() -> Unit)?,
     onPlayNext: (Track) -> Unit,
-    onViewMetadata: (Track) -> Unit,
+    onEditMetadata: (Track) -> Unit,
+    onEditLyrics: (Track) -> Unit,
     showVolumeIcon: Boolean = false,
 ) {
     Row(
@@ -484,12 +493,17 @@ private fun TrackRow(
                 .weight(1f)
                 .fillMaxHeight(),
         )
-        TrackRowMenu(track, onPlayNext, onViewMetadata)
+        TrackRowMenu(track, onPlayNext, onEditMetadata, onEditLyrics)
     }
 }
 
 @Composable
-private fun TrackRowMenu(track: Track, onPlayNext: (Track) -> Unit, onViewMetadata: (Track) -> Unit) {
+private fun TrackRowMenu(
+    track: Track,
+    onPlayNext: (Track) -> Unit,
+    onEditMetadata: (Track) -> Unit,
+    onEditLyrics: (Track) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         // A 48dp IconButton centers its 24dp icon, so 4dp puts the icon 16dp from the edge.
@@ -512,10 +526,18 @@ private fun TrackRowMenu(track: Track, onPlayNext: (Track) -> Unit, onViewMetada
             DropdownMenuItem(
                 onClick = {
                     expanded = false
-                    onViewMetadata(track)
+                    onEditMetadata(track)
                 },
             ) {
-                Text(stringResource(Res.string.view_metadata))
+                Text(stringResource(Res.string.edit_metadata))
+            }
+            DropdownMenuItem(
+                onClick = {
+                    expanded = false
+                    onEditLyrics(track)
+                },
+            ) {
+                Text(stringResource(Res.string.edit_lyrics))
             }
         }
     }

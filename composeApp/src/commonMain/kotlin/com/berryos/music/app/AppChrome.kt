@@ -57,8 +57,10 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
-import art.rippledesign.compose.rui.LocalPageScrollable
+import art.rippledesign.compose.rui.LocalPageScrollOwner
+import art.rippledesign.compose.rui.LocalPageScrollRegistry
 import art.rippledesign.compose.rui.LocalTopBarOffsetPx
+import art.rippledesign.compose.rui.PageScrollStateRegistry
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
 import art.rippledesign.compose.rui.rememberRAppBarScrollBehavior
@@ -84,9 +86,9 @@ import com.berryos.music.app.navigation.TrackMetadataRoute
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.AppBarActionState
+import com.berryos.music.core.designsystem.AppBarActionRegistry
 import com.berryos.music.core.designsystem.CoverPaletteDialog
-import com.berryos.music.core.designsystem.LocalAppBarActionState
+import com.berryos.music.core.designsystem.LocalAppBarActionRegistry
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -102,9 +104,9 @@ import com.berryos.music.resources.album
 import com.berryos.music.resources.app_name
 import com.berryos.music.resources.appearance
 import com.berryos.music.resources.artist
+import com.berryos.music.resources.edit
 import com.berryos.music.resources.folder
 import com.berryos.music.resources.library
-import com.berryos.music.resources.metadata
 import com.berryos.music.resources.playback
 import com.berryos.music.resources.playlist
 import com.berryos.music.resources.search
@@ -208,7 +210,16 @@ internal fun AppChrome(
     // The app bar behavior lives in RUI; the offsets are kept per route here: returning to a
     // scrolled page restores its hidden bar, while a newly opened page starts with it visible.
     val topBarOffsets = remember { mutableStateMapOf<Any, Float>() }
-    val appBarActionState = remember { AppBarActionState() }
+    val pageScrollRegistry = remember { PageScrollStateRegistry() }
+    val appBarActionRegistry = remember { AppBarActionRegistry() }
+    LaunchedEffect(tabs.map { it.backStack.toList() }) {
+        val routes = tabs.flatMap { it.backStack }.toSet()
+        topBarOffsets.retainActiveRoutes(routes)
+        pageScrollRegistry.retain(routes)
+        appBarActionRegistry.retain(routes)
+    }
+    val barOwner: Any = route ?: selectedTab
+    val appBarActionState = appBarActionRegistry.state(barOwner)
     val topBarHeightPx = with(density) { topBarHeight.toPx() }
     val topBarHeightState = rememberUpdatedState(topBarHeightPx)
     // With tabs, only the title bar may scroll away; the tabs stay under the status bar.
@@ -220,9 +231,9 @@ internal fun AppChrome(
         topBarHeightPx
     }
     val scrollableBarHeightState = rememberUpdatedState(scrollableBarHeightPx)
-    val routeKey: Any = route ?: selectedTab
+    val routeKey: Any = barOwner
     val routeState = rememberUpdatedState(routeKey)
-    val pageScrollable = remember { mutableStateOf(true) }
+    val pageScrollable = pageScrollRegistry.state(routeKey)
     var previousRouteKey by remember { mutableStateOf<Any?>(null) }
     // A detail route inherits the bar position of the page it was opened from, so the bar keeps
     // its state while the transform runs instead of jumping to visible under it.
@@ -360,9 +371,10 @@ internal fun AppChrome(
                     Box(modifier = Modifier.fillMaxSize().consumeAllPointerInput())
                 }
                 CompositionLocalProvider(
-                    LocalPageScrollable provides pageScrollable,
+                    LocalPageScrollRegistry provides pageScrollRegistry,
+                    LocalPageScrollOwner provides routeKey,
                     LocalTopBarOffsetPx provides exposedTopBarOffset,
-                    LocalAppBarActionState provides appBarActionState,
+                    LocalAppBarActionRegistry provides appBarActionRegistry,
                 ) {
                     TabContent(
                         tabs = tabs,
@@ -642,7 +654,7 @@ private fun routeTitle(route: NavKey?): String {
         is ArtistRoute -> Res.string.artist
         is PlaylistRoute -> Res.string.playlist
         is FolderRoute -> Res.string.folder
-        is TrackMetadataRoute -> Res.string.metadata
+        is TrackMetadataRoute -> Res.string.edit
         is ServerEditRoute -> if (route.serverId == null) Res.string.add_server else Res.string.server
         else -> staticRouteTitles[route]
     }
@@ -655,3 +667,7 @@ private const val MINI_PLAYER_ENTER_MILLIS = 250
 private const val MINI_PLAYER_EXIT_MILLIS = 200
 private val CHROME_SCROLL_THRESHOLD = 12.dp
 private val TAB_ROW_HEIGHT = 48.dp
+
+internal fun MutableMap<Any, Float>.retainActiveRoutes(routes: Set<Any>) {
+    keys.filter { it is NavKey && it !in routes }.forEach(::remove)
+}

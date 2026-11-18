@@ -54,7 +54,7 @@ internal fun ArtistsScreen(
     // Keeps this grid composed while the transform draws it; Nav3 would otherwise drop it as soon
     // as its own scene transition settles.
     rememberRContainerTransformHold(
-        active = transform.activeKey != null,
+        active = transform.transitionRunning,
         durationMillis = ContainerTransformSpec.enterDurationMillis,
     )
     when (state) {

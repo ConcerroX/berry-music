@@ -22,12 +22,16 @@ sealed interface TrackTagUiState {
     data object NotLocal : TrackTagUiState
     data class Ready(
         val inspection: TrackTagInspection,
+        val originalFilename: String = inspection.filename.orEmpty(),
+        val filename: String = originalFilename,
         val originalEdits: Map<TrackTagField, String> = inspection.initialEdits(),
         val edits: Map<TrackTagField, String> = originalEdits,
-        val dirty: Boolean = false,
         val saving: Boolean = false,
         val error: String? = null,
-    ) : TrackTagUiState
+    ) : TrackTagUiState {
+        val dirty: Boolean
+            get() = edits != originalEdits || filename != originalFilename
+    }
 
     data class Error(val message: String) : TrackTagUiState
 }
@@ -79,12 +83,13 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
     fun edit(field: TrackTagField, value: String) {
         val current = _state.value as? TrackTagUiState.Ready ?: return
         if (current.edits[field] == value) return
-        val edits = current.edits + (field to value)
-        _state.value = current.copy(
-            edits = edits,
-            dirty = edits != current.originalEdits,
-            error = null,
-        )
+        _state.value = current.copy(edits = current.edits + (field to value), error = null)
+    }
+
+    fun editFilename(value: String) {
+        val current = _state.value as? TrackTagUiState.Ready ?: return
+        if (current.filename == value) return
+        _state.value = current.copy(filename = value, error = null)
     }
 
     fun save() {
@@ -94,10 +99,13 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
         _state.value = current.copy(saving = true, error = null)
         viewModelScope.launch {
             _state.value = runCatching {
-                repository.save(track, current.edits)
+                if (current.edits != current.originalEdits) repository.save(track, current.edits)
+                if (current.filename != current.originalFilename) {
+                    repository.rename(track, current.filename)
+                }
                 repository.inspect(track)
             }.fold(
-                onSuccess = { TrackTagUiState.Ready(it, dirty = false) },
+                onSuccess = { TrackTagUiState.Ready(it) },
                 onFailure = {
                     current.copy(saving = false, error = it.message ?: getString(Res.string.metadata_save_failed))
                 },

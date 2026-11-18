@@ -1,6 +1,7 @@
 package com.berryos.music.core.metadata
 
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -22,6 +23,7 @@ import com.berryos.audiometadata.vorbis.VorbisCommentTag
 import com.berryos.music.core.model.Track
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.FileDescriptor
 
 @OptIn(ExperimentalAudioMetadataApi::class)
@@ -31,9 +33,11 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
     override suspend fun inspect(track: Track): TrackTagInspection = withContext(Dispatchers.IO) {
         val mediaId = track.id.toLongOrNull()
             ?: throw IllegalArgumentException("Track id is not a MediaStore id")
+        val filename = queryColumn(mediaId, MediaStore.Audio.Media.DISPLAY_NAME)
         resolver.openFileDescriptor(audioUri(mediaId), "r")?.use { descriptor ->
             val audio = AudioFile.read(FileDescriptorSource(descriptor), includeArtworks = false)
-            audio?.toInspection() ?: TrackTagInspection(tagType = null, entries = emptyList())
+            val inspection = audio?.toInspection() ?: TrackTagInspection(tagType = null, entries = emptyList())
+            inspection.copy(filename = filename)
         } ?: throw IllegalStateException("Unable to open the audio file")
     }
 
@@ -48,6 +52,43 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
             audio.save(source)
         } ?: throw IllegalStateException("Unable to open the audio file")
     }
+
+    @Suppress("DEPRECATION")
+    override suspend fun rename(track: Track, filename: String): Unit = withContext(Dispatchers.IO) {
+        val mediaId = track.id.toLongOrNull()
+            ?: throw IllegalArgumentException("Track id is not a MediaStore id")
+        val uri = audioUri(mediaId)
+        val current = queryColumn(mediaId, MediaStore.Audio.Media.DISPLAY_NAME)
+            ?: throw IllegalStateException("Unable to read the current filename")
+        val target = renameTarget(current, filename)
+        if (target == current) return@withContext
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, target)
+            }
+            if (resolver.update(uri, values, null, null) <= 0) {
+                throw IllegalStateException("Unable to rename the audio file")
+            }
+        } else {
+            val oldPath = queryColumn(mediaId, MediaStore.MediaColumns.DATA)
+                ?: throw IllegalStateException("Unable to read the current file path")
+            val oldFile = File(oldPath)
+            val newFile = File(oldFile.parentFile, target)
+            if (!oldFile.renameTo(newFile)) {
+                throw IllegalStateException("Unable to rename the audio file")
+            }
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DATA, newFile.absolutePath)
+                put(MediaStore.MediaColumns.DISPLAY_NAME, target)
+            }
+            resolver.update(uri, values, null, null)
+        }
+    }
+
+    private fun queryColumn(mediaId: Long, column: String): String? =
+        resolver.query(audioUri(mediaId), arrayOf(column), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
 }
 
 @OptIn(ExperimentalAudioMetadataApi::class)
@@ -187,6 +228,15 @@ private fun trackTagField(key: String): TrackTagField? = when (key.lowercase()) 
     -> TrackTagField.LYRICS
 
     else -> null
+}
+
+private fun renameTarget(current: String, requested: String): String {
+    val target = requested.trim().trimEnd('.')
+    require(target.isNotEmpty()) { "Filename must not be empty" }
+    require('/' !in target && '\\' !in target) { "Filename must not contain path separators" }
+    val extension = current.substringAfterLast('.', "")
+    val hasExtension = target.substringAfterLast('.', "").isNotEmpty()
+    return if (extension.isNotEmpty() && !hasExtension) "$target.$extension" else target
 }
 
 internal fun audioUri(mediaId: Long): Uri {

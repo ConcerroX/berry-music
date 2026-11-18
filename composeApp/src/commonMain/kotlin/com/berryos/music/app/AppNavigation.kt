@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -199,6 +200,7 @@ private fun AppNavDisplay(
                     coverUrl = libraryState.albumCoverUrl(route.source, route.albumId),
                     transformKey = albumTransformKey(route.source, route.albumId),
                     controller = controller,
+                    stillInBackStack = { backStack.any { it == route } },
                     showMiniPlayer = showMiniPlayer,
                     miniPlayerHeight = chromeMetrics.miniPlayerHeight,
                     sessionActive = playbackState.source == PlaybackSource.Album(route.albumId),
@@ -224,6 +226,7 @@ private fun AppNavDisplay(
                     coverUrl = libraryState.artistCoverUrl(route.source, route.artistId),
                     transformKey = artistTransformKey(route.source, route.artistId),
                     controller = controller,
+                    stillInBackStack = { backStack.any { it == route } },
                     showMiniPlayer = showMiniPlayer,
                     miniPlayerHeight = chromeMetrics.miniPlayerHeight,
                     sessionActive = playbackState.source == PlaybackSource.Artist(route.artistId),
@@ -254,7 +257,12 @@ private fun AppNavDisplay(
                     LaunchedEffect(resolved) {
                         if (resolved != null) track = resolved
                     }
-                    TrackMetadataScreen(track, settings)
+                    TrackMetadataScreen(
+                        track,
+                        settings,
+                        startInLyrics = route.startInLyrics,
+                        ownerKey = route,
+                    )
                 }
             }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }
@@ -274,7 +282,28 @@ private fun AppNavDisplay(
         sharedTransitionScope = null,
         onBack = actions.back,
     )
+    val sourceSceneTag = when (backStack.firstOrNull()) {
+        AlbumsRoute -> ContainerTransformTag.SourceAlbums
+        ArtistsRoute -> ContainerTransformTag.SourceArtists
+        else -> null
+    }
+    val currentSceneTag = sceneState.currentScene.entries.lastOrNull()
+        ?.metadata
+        ?.get(CONTAINER_TRANSFORM_TAG_KEY)
+    val returningToSource = sourceSceneTag != null && currentSceneTag == sourceSceneTag
     val navigationEventState = rememberNavigationEventState(sceneState)
+    val gestureTargetTag = navigationEventState.backInfo.lastOrNull()
+        ?.scene
+        ?.entries
+        ?.lastOrNull()
+        ?.metadata
+        ?.get(CONTAINER_TRANSFORM_TAG_KEY)
+    SideEffect {
+        controller.setReturningToSource(returningToSource)
+        controller.setGestureReturningToSource(
+            sourceSceneTag != null && gestureTargetTag == sourceSceneTag,
+        )
+    }
     // Block back while a return animates, but never while a predictive gesture is in progress:
     // flipping isBackEnabled mid-gesture makes the system cancel it.
     val backBlockedByTransition = controller.transitionRunning &&
@@ -309,14 +338,18 @@ private fun AppNavDisplay(
                 },
                 popTransitionSpec = {
                     if (isContainerTransformPair(initialState, targetState)) {
-                        rContainerTransformTransition(ContainerTransformSpec.returnDurationMillis)
+                        rContainerTransformTransition(
+                            ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
+                        )
                     } else {
                         defaultPopTransitionSpec<NavKey>().invoke(this)
                     }
                 },
                 predictivePopTransitionSpec = { swipeEdge ->
                     if (isContainerTransformPair(initialState, targetState)) {
-                        rContainerTransformTransition(ContainerTransformSpec.returnDurationMillis)
+                        rContainerTransformTransition(
+                            ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
+                        )
                     } else {
                         defaultPredictivePopTransitionSpec<NavKey>().invoke(this, swipeEdge)
                     }
@@ -336,6 +369,7 @@ private fun TransformEntry(
     coverUrl: String?,
     transformKey: ContainerTransformKey,
     controller: RContainerTransformNavController<ContainerTransformKey>,
+    stillInBackStack: () -> Boolean,
     showMiniPlayer: Boolean,
     miniPlayerHeight: Dp,
     sessionActive: Boolean,
@@ -352,6 +386,7 @@ private fun TransformEntry(
         key = transformKey,
         controller = controller,
         spec = ContainerTransformSpec.withContainerColor(containerColor),
+        stillInBackStack = stillInBackStack,
     ) {
         content(bottomInset)
     }
@@ -364,6 +399,7 @@ internal fun LibraryUiState.artistCoverUrl(source: SourceKey, artistId: String):
     (this as? LibraryUiState.Ready)?.snapshot?.artist(source, artistId)?.coverUrl
 
 private const val CONTAINER_TRANSFORM_TAG_KEY = "berry.containerTransformTag"
+private const val CONTAINER_TRANSFORM_TAIL_MILLIS = 50
 
 private enum class ContainerTransformTag { SourceAlbums, SourceArtists, TargetAlbum, TargetArtist }
 

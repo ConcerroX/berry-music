@@ -123,8 +123,22 @@ internal fun AppShell(
     val tabs = createTabs(homeBackStack, albumsBackStack, songsBackStack, playlistsBackStack, artistsBackStack)
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val selectedTab = tabs[selectedTabIndex]
+    val playbackSheetState = rememberModalBottomSheetState(
+        initialValue = ModalBottomSheetValue.Hidden,
+        skipHalfExpanded = true,
+    )
+    val scope = rememberCoroutineScope()
+    val appSettings by settings.settings.collectAsState()
+    val collapseOnPause = appSettings.collapsePlayerOnPause
+    val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
+    val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
+        playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
     val actions = AppActions(
-        open = { route -> selectedTab.backStack.add(route) },
+        open = { route ->
+            // The sheet sits above the tab content; leave it before showing another page.
+            if (sheetVisible) scope.launch { playbackSheetState.hide() }
+            selectedTab.backStack.add(route)
+        },
         back = {
             if (selectedTab.backStack.size > 1) {
                 selectedTab.backStack.removeLastOrNull()
@@ -139,16 +153,6 @@ internal fun AppShell(
         previous = playback::previous,
         seekTo = playback::seekTo,
     )
-    val playbackSheetState = rememberModalBottomSheetState(
-        initialValue = ModalBottomSheetValue.Hidden,
-        skipHalfExpanded = true,
-    )
-    val scope = rememberCoroutineScope()
-    val appSettings by settings.settings.collectAsState()
-    val collapseOnPause = appSettings.collapsePlayerOnPause
-    val nowPlayingTarget = resolveNowPlayingTarget(libraryState, playbackState)
-    val sheetVisible = playbackSheetState.currentValue != ModalBottomSheetValue.Hidden ||
-        playbackSheetState.targetValue != ModalBottomSheetValue.Hidden
     val queueCoverUrl = playbackState.currentTrack?.let { track ->
         (libraryState as? LibraryUiState.Ready)?.snapshot?.coverUrlOf(track)
     }
