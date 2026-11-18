@@ -107,7 +107,7 @@ internal fun TabContent(
     playbackPosition: StateFlow<PlaybackPosition>,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
-    chromeMetrics: ChromeMetrics,
+    barMetrics: BarMetrics,
     topContentInset: Dp,
     compact: Boolean,
     showMiniPlayer: Boolean,
@@ -128,7 +128,7 @@ internal fun TabContent(
             playbackPosition,
             settings,
             collapseOnPause,
-            chromeMetrics,
+            barMetrics,
             topContentInset,
             compact,
             showMiniPlayer,
@@ -149,7 +149,7 @@ private fun AppNavDisplay(
     playbackPosition: StateFlow<PlaybackPosition>,
     settings: AppSettingsRepository,
     collapseOnPause: Boolean,
-    chromeMetrics: ChromeMetrics,
+    barMetrics: BarMetrics,
     topContentInset: Dp,
     compact: Boolean,
     showMiniPlayer: Boolean,
@@ -162,7 +162,7 @@ private fun AppNavDisplay(
     // bar offset so the content fills the space the bar leaves instead of showing a gap. The mini
     // player inset is a container inset so the list (and its overscroll glow) ends above it.
     val rootPadding = PaddingValues(
-        start = if (!compact) chromeMetrics.railWidth else 0.dp,
+        start = if (!compact) barMetrics.railWidth else 0.dp,
         top = topContentInset,
         end = 0.dp,
         bottom = bottomContentInset,
@@ -171,10 +171,10 @@ private fun AppNavDisplay(
         start = 0.dp,
         top = topContentInset,
         end = 0.dp,
-        bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
+        bottom = if (showMiniPlayer) barMetrics.miniPlayerHeight else 0.dp,
     )
     val ownedTopBarPadding = PaddingValues(
-        bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
+        bottom = if (showMiniPlayer) barMetrics.miniPlayerHeight else 0.dp,
     )
     val entries = rememberDecoratedNavEntries(
         backStack = backStack,
@@ -208,7 +208,7 @@ private fun AppNavDisplay(
                     controller = controller,
                     stillInBackStack = { backStack.any { it == route } },
                     showMiniPlayer = showMiniPlayer,
-                    miniPlayerHeight = chromeMetrics.miniPlayerHeight,
+                    miniPlayerHeight = barMetrics.miniPlayerHeight,
                     sessionActive = playbackState.source == PlaybackSource.Album(route.albumId),
                 ) { bottomInset ->
                     AlbumScreen(
@@ -234,7 +234,7 @@ private fun AppNavDisplay(
                     controller = controller,
                     stillInBackStack = { backStack.any { it == route } },
                     showMiniPlayer = showMiniPlayer,
-                    miniPlayerHeight = chromeMetrics.miniPlayerHeight,
+                    miniPlayerHeight = barMetrics.miniPlayerHeight,
                     sessionActive = playbackState.source == PlaybackSource.Artist(route.artistId),
                 ) { bottomInset ->
                     ArtistScreen(

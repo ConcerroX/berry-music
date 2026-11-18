@@ -125,7 +125,7 @@ import org.jetbrains.compose.resources.stringResource
 @Suppress("LongMethod", "CyclomaticComplexMethod")
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-internal fun AppChrome(
+internal fun AppFrame(
     tabs: List<TabItem>,
     selectedTabIndex: Int,
     actions: AppActions,
@@ -171,19 +171,19 @@ internal fun AppChrome(
     val bottomBarOffset by animateFloatAsState(
         targetValue = if (barShouldHide) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (barShouldHide) CHROME_HIDE_MILLIS else CHROME_SHOW_MILLIS,
+            durationMillis = if (barShouldHide) BARS_HIDE_MILLIS else BARS_SHOW_MILLIS,
             easing = if (barShouldHide) FastOutLinearInEasing else LinearOutSlowInEasing,
         ),
         label = "bottomBarOffset",
     )
-    val chromeStaysVisible = isRoot || barHandsOffToMiniPlayer
-    val rootChromeOffset by animateFloatAsState(
-        targetValue = if (chromeStaysVisible) 0f else 1f,
+    val rootBarsVisible = isRoot || barHandsOffToMiniPlayer
+    val rootBarsOffset by animateFloatAsState(
+        targetValue = if (rootBarsVisible) 0f else 1f,
         animationSpec = tween(
-            durationMillis = if (chromeStaysVisible) CHROME_SHOW_MILLIS else CHROME_HIDE_MILLIS,
-            easing = if (chromeStaysVisible) LinearOutSlowInEasing else FastOutLinearInEasing,
+            durationMillis = if (rootBarsVisible) BARS_SHOW_MILLIS else BARS_HIDE_MILLIS,
+            easing = if (rootBarsVisible) LinearOutSlowInEasing else FastOutLinearInEasing,
         ),
-        label = "rootChromeOffset",
+        label = "rootBarsOffset",
     )
     val miniCoverUrl = playbackState.currentTrack?.let { track ->
         (libraryState as? LibraryUiState.Ready)?.snapshot?.coverUrlOf(track)
@@ -201,7 +201,7 @@ internal fun AppChrome(
     }
     var miniPlayerHeight by remember { mutableStateOf(64.dp) }
     var railWidth by remember { mutableStateOf(72.dp) }
-    val chromeMetrics = ChromeMetrics(
+    val barMetrics = BarMetrics(
         miniPlayerHeight = miniPlayerHeight,
         railWidth = railWidth,
     )
@@ -268,7 +268,7 @@ internal fun AppChrome(
         }
     }
     val topContentInset = with(density) { (topBarHeightPx - topBarOffsetPx).coerceAtLeast(0f).toDp() }
-    val thresholdPx = with(density) { CHROME_SCROLL_THRESHOLD.toPx() }
+    val thresholdPx = with(density) { BARS_SCROLL_THRESHOLD.toPx() }
     // The app bar comes from RUI (pre-scroll + snap); the bottom bar keeps its own debounced
     // toggle driven by the content's consumed scroll.
     val hideOnScroll = remember(appBarScroll, thresholdPx) {
@@ -331,7 +331,7 @@ internal fun AppChrome(
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
-                ChromeUnderlay(
+                BackgroundBars(
                     compact = compact,
                     isRoot = isRoot,
                     isDetailRoute = isDetailRoute,
@@ -367,7 +367,7 @@ internal fun AppChrome(
                         playbackPosition = playbackPosition,
                         settings = settings,
                         collapseOnPause = collapseOnPause,
-                        chromeMetrics = chromeMetrics,
+                        barMetrics = barMetrics,
                         topContentInset = topContentInset,
                         compact = compact,
                         showMiniPlayer = showMiniPlayer,
@@ -388,7 +388,7 @@ internal fun AppChrome(
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
-                RootBottomChrome(
+                RootBottomBars(
                     compact = compact,
                     railWidth = railWidth,
                     showMiniPlayer = showMiniPlayer,
@@ -401,7 +401,7 @@ internal fun AppChrome(
                     selectedTabIndex = selectedTabIndex,
                     bottomBarOffset = bottomBarOffset,
                     bottomBarHeight = bottomBarHeight,
-                    chromeOffset = rootChromeOffset,
+                    barsOffset = rootBarsOffset,
                     onMiniPlayerSize = { miniPlayerHeight = with(density) { it.height.toDp() } },
                     onBottomBarSize = { bottomBarHeight = with(density) { it.height.toDp() } },
                     onSelectTab = onSelectTab,
@@ -418,7 +418,7 @@ internal fun AppChrome(
 
 @Suppress("LongMethod")
 @Composable
-private fun ChromeUnderlay(
+private fun BackgroundBars(
     compact: Boolean,
     isRoot: Boolean,
     isDetailRoute: Boolean,
@@ -506,7 +506,7 @@ private fun BoxScope.TopBarOverlay(
 }
 
 @Composable
-private fun BoxScope.RootBottomChrome(
+private fun BoxScope.RootBottomBars(
     compact: Boolean,
     railWidth: Dp,
     showMiniPlayer: Boolean,
@@ -519,7 +519,7 @@ private fun BoxScope.RootBottomChrome(
     selectedTabIndex: Int,
     bottomBarOffset: Float,
     bottomBarHeight: Dp,
-    chromeOffset: Float,
+    barsOffset: Float,
     onMiniPlayerSize: (IntSize) -> Unit,
     onBottomBarSize: (IntSize) -> Unit,
     onSelectTab: (Int) -> Unit,
@@ -527,15 +527,15 @@ private fun BoxScope.RootBottomChrome(
     val bottomBarHeightPx = with(LocalDensity.current) { bottomBarHeight.toPx() }
     val barTranslationPx = if (compact) bottomBarHeightPx else 0f
     Column(
-        // The whole bottom chrome travels together: the bar slides off-screen while the mini
+        // The whole bottom bar group travels together: the bar slides off-screen while the mini
         // player takes its place at the bottom instead of being left behind.
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .fillMaxWidth()
             .padding(start = if (!compact) railWidth else 0.dp)
-            .then(if (chromeOffset >= 1f) Modifier.clearAndSetSemantics { } else Modifier)
+            .then(if (barsOffset >= 1f) Modifier.clearAndSetSemantics { } else Modifier)
             .graphicsLayer {
-                translationY = barTranslationPx * bottomBarOffset + size.height * chromeOffset
+                translationY = barTranslationPx * bottomBarOffset + size.height * barsOffset
             },
     ) {
         AnimatedVisibility(
@@ -621,8 +621,8 @@ private fun routeTitle(route: NavKey?): String {
     return stringResource(resource ?: Res.string.app_name)
 }
 
-private const val CHROME_HIDE_MILLIS = 175
-private const val CHROME_SHOW_MILLIS = 225
+private const val BARS_HIDE_MILLIS = 175
+private const val BARS_SHOW_MILLIS = 225
 private const val MINI_PLAYER_ENTER_MILLIS = 250
 private const val MINI_PLAYER_EXIT_MILLIS = 200
-private val CHROME_SCROLL_THRESHOLD = 12.dp
+private val BARS_SCROLL_THRESHOLD = 12.dp

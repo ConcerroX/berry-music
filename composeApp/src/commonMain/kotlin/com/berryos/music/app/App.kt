@@ -102,7 +102,7 @@ internal data class TabItem(
     val backStack: NavBackStack<NavKey>,
 )
 
-internal data class ChromeMetrics(val miniPlayerHeight: Dp, val railWidth: Dp)
+internal data class BarMetrics(val miniPlayerHeight: Dp, val railWidth: Dp)
 
 @Suppress("LongMethod")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
@@ -223,7 +223,7 @@ internal fun AppShell(
             }
         },
     ) {
-        AppChrome(
+        AppFrame(
             tabs,
             selectedTabIndex,
             actions,

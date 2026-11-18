@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ChromeStateTest {
+class PageTopBarStatesTest {
     @Test
     fun pageScrollabilityIsScopedByOwner() {
         val registry = PageTopBarStates()
