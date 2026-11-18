@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import art.rippledesign.compose.rui.RSlider
 import com.berryos.music.core.designsystem.CoverColors
 import com.berryos.music.core.designsystem.MEDIUM_ALPHA
 import com.berryos.music.resources.Res
@@ -102,7 +102,7 @@ internal fun MediaPlaybackControls(
                 center = volumeUpCenter,
                 tint = mediumColor,
             )
-            Slider(
+            RSlider(
                 value = volume,
                 onValueChange = { volume = it },
                 colors = SliderDefaults.colors(

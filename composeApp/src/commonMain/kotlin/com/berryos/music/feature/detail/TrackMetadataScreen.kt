@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.MaterialTheme
@@ -29,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import art.rippledesign.compose.rui.pager.RHorizontalPager
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.metadata.TagEntry
@@ -144,7 +144,7 @@ private fun TabbedContent(
             pagerState.animateScrollToPage(selectedTab)
         }
     }
-    HorizontalPager(
+    RHorizontalPager(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         key = { it },
