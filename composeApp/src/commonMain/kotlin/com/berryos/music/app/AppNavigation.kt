@@ -92,7 +92,10 @@ import com.berryos.music.feature.settings.ServerEditScreen
 import com.berryos.music.feature.settings.ServersScreen
 import com.berryos.music.feature.settings.SettingsScreen
 import com.berryos.music.feature.songs.SongsScreen
+import com.berryos.music.resources.Res
+import com.berryos.music.resources.edit
 import kotlinx.coroutines.flow.StateFlow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun TabContent(
@@ -168,6 +171,9 @@ private fun AppNavDisplay(
         start = 0.dp,
         top = topContentInset,
         end = 0.dp,
+        bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
+    )
+    val ownedTopBarPadding = PaddingValues(
         bottom = if (showMiniPlayer) chromeMetrics.miniPlayerHeight else 0.dp,
     )
     val entries = rememberDecoratedNavEntries(
@@ -247,7 +253,7 @@ private fun AppNavDisplay(
             entry<PlaylistRoute> { route -> PaddedScreen(pushedPadding) { PlaylistScreen(route.playlistId) } }
             entry<FolderRoute> { route -> PaddedScreen(pushedPadding) { FolderScreen(route.folderId) } }
             entry<TrackMetadataRoute> { route ->
-                PaddedScreen(pushedPadding) {
+                PaddedScreen(ownedTopBarPadding) {
                     val resolved = (libraryState as? LibraryUiState.Ready)
                         ?.snapshot
                         ?.tracks
@@ -257,7 +263,24 @@ private fun AppNavDisplay(
                     LaunchedEffect(resolved) {
                         if (resolved != null) track = resolved
                     }
-                    TrackMetadataScreen(track, settings, startInLyrics = route.startInLyrics)
+                    TrackMetadataScreen(
+                        track,
+                        settings,
+                        startInLyrics = route.startInLyrics,
+                        topBar = { bar ->
+                            AppTopBar(
+                                title = stringResource(Res.string.edit),
+                                onBack = actions.back,
+                                onMenu = null,
+                                onSave = bar.onSave,
+                                saveEnabled = bar.saveEnabled,
+                                tabLabels = bar.tabLabels,
+                                selectedTabIndex = bar.selectedTabIndex,
+                                selectedTabPosition = bar.selectedTabPosition,
+                                onTabSelected = bar.onTabSelected,
+                            )
+                        },
+                    )
                 }
             }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }

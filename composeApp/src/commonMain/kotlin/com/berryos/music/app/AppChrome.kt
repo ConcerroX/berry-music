@@ -86,7 +86,6 @@ import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.CoverPaletteDialog
-import com.berryos.music.core.designsystem.LocalPageChromeRegistry
 import com.berryos.music.core.designsystem.PageChromeRegistry
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
@@ -214,18 +213,10 @@ internal fun AppChrome(
     }
     val routeKey: Any = route ?: selectedTab
     val pageChrome = pageChromeRegistry.state(routeKey)
-    val appBarActionState = pageChrome.actions
+    val ownsTopBar = isDetailRoute || route is TrackMetadataRoute
     val topBarHeightPx = with(density) { topBarHeight.toPx() }
     val topBarHeightState = rememberUpdatedState(topBarHeightPx)
-    // With tabs, only the title bar may scroll away; the tabs stay under the status bar.
-    val hasTabs = appBarActionState.tabLabels.isNotEmpty()
-    val tabsHeightPx = if (hasTabs) with(density) { TAB_ROW_HEIGHT.toPx() } else 0f
-    val scrollableBarHeightPx = if (hasTabs) {
-        (topBarHeightPx - tabsHeightPx - statusBarTop).coerceAtLeast(0f)
-    } else {
-        topBarHeightPx
-    }
-    val scrollableBarHeightState = rememberUpdatedState(scrollableBarHeightPx)
+    val scrollableBarHeightState = rememberUpdatedState(topBarHeightPx)
     val routeState = rememberUpdatedState(routeKey)
     val pageScrollable = pageChrome.scrollable
     var previousRouteKey by remember { mutableStateOf<Any?>(null) }
@@ -233,12 +224,11 @@ internal fun AppChrome(
     // its state while the transform runs instead of jumping to visible under it.
     val inheritedOffsetPx = previousRouteKey?.let { pageChromeRegistry.state(it).topBarOffset } ?: 0f
     val fallbackOffsetPx = if (isDetailRoute) inheritedOffsetPx else 0f
-    // Detail pages draw their own top bar and fill the screen, so the global bar does not follow
-    // their scroll.
-    val detailRouteState = rememberUpdatedState(isDetailRoute)
+    // Pages that own their top bar also own the scroll relationship with it.
+    val ownsTopBarState = rememberUpdatedState(ownsTopBar)
     val appBarScroll = rememberRAppBarScrollBehavior(
         barHeightPx = { scrollableBarHeightState.value },
-        enabled = { !detailRouteState.value && pageScrollable.value },
+        enabled = { !ownsTopBarState.value && pageScrollable.value },
         offset = { pageChromeRegistry.state(routeState.value).topBarOffset },
         onOffsetChange = { pageChromeRegistry.state(routeState.value).updateTopBarOffset(it) },
     )
@@ -269,12 +259,12 @@ internal fun AppChrome(
         }
     }
     val topBarOffsetPx = (if (pageChrome.hasTopBarOffset) pageChrome.topBarOffset else fallbackOffsetPx)
-        .coerceIn(0f, scrollableBarHeightPx)
+        .coerceIn(0f, topBarHeightPx)
     val exposedTopBarOffset = remember {
         derivedStateOf {
             pageChromeRegistry.state(routeState.value)
                 .topBarOffset
-                .coerceIn(0f, scrollableBarHeightState.value)
+                .coerceIn(0f, topBarHeightState.value)
         }
     }
     val topContentInset = with(density) { (topBarHeightPx - topBarOffsetPx).coerceAtLeast(0f).toDp() }
@@ -307,7 +297,7 @@ internal fun AppChrome(
             }
         }
     }
-    val topBarHidden = !hasTabs && topBarOffsetPx >= topBarHeightPx - 0.5f
+    val topBarHidden = topBarOffsetPx >= topBarHeightPx - 0.5f
     val openDrawerAction: () -> Unit = { drawerScope.launch { scaffoldState.drawerState.open() } }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val compact = maxWidth < 600.dp
@@ -338,12 +328,6 @@ internal fun AppChrome(
                         contentStart = contentStart,
                         offsetPx = topBarOffsetPx,
                         hidden = topBarHidden,
-                        onSave = appBarActionState.onSave,
-                        saveEnabled = appBarActionState.saveEnabled,
-                        tabLabels = appBarActionState.tabLabels,
-                        selectedTabIndex = appBarActionState.selectedTabIndex,
-                        selectedTabPosition = appBarActionState.selectedTabPosition,
-                        onTabSelected = appBarActionState.onTabSelected,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -373,7 +357,6 @@ internal fun AppChrome(
                         pageChromeRegistry.state(owner).scrollable
                     },
                     LocalTopBarOffsetPx provides exposedTopBarOffset,
-                    LocalPageChromeRegistry provides pageChromeRegistry,
                 ) {
                     TabContent(
                         tabs = tabs,
@@ -394,7 +377,7 @@ internal fun AppChrome(
                     )
                 }
                 // Pages scroll under the bar, so the bar is drawn above their content.
-                if (!isDetailRoute) {
+                if (!ownsTopBar) {
                     TopBarOverlay(
                         title = title,
                         onBack = onBack,
@@ -402,12 +385,6 @@ internal fun AppChrome(
                         contentStart = contentStart,
                         offsetPx = topBarOffsetPx,
                         hidden = topBarHidden,
-                        onSave = appBarActionState.onSave,
-                        saveEnabled = appBarActionState.saveEnabled,
-                        tabLabels = appBarActionState.tabLabels,
-                        selectedTabIndex = appBarActionState.selectedTabIndex,
-                        selectedTabPosition = appBarActionState.selectedTabPosition,
-                        onTabSelected = appBarActionState.onTabSelected,
                         onMeasured = { topBarHeight = with(density) { it.height.toDp() } },
                     )
                 }
@@ -513,12 +490,6 @@ private fun BoxScope.TopBarOverlay(
     contentStart: Dp,
     offsetPx: Float,
     hidden: Boolean,
-    onSave: (() -> Unit)?,
-    saveEnabled: Boolean,
-    tabLabels: List<String>,
-    selectedTabIndex: Int,
-    selectedTabPosition: Float,
-    onTabSelected: (Int) -> Unit,
     onMeasured: (IntSize) -> Unit,
 ) {
     Box(
@@ -530,17 +501,7 @@ private fun BoxScope.TopBarOverlay(
             .padding(start = contentStart)
             .onSizeChanged(onMeasured),
     ) {
-        AppTopBar(
-            title,
-            onBack,
-            openDrawer,
-            onSave = onSave,
-            saveEnabled = saveEnabled,
-            tabLabels = tabLabels,
-            selectedTabIndex = selectedTabIndex,
-            selectedTabPosition = selectedTabPosition,
-            onTabSelected = onTabSelected,
-        )
+        AppTopBar(title, onBack, openDrawer)
     }
 }
 
@@ -665,4 +626,3 @@ private const val CHROME_SHOW_MILLIS = 225
 private const val MINI_PLAYER_ENTER_MILLIS = 250
 private const val MINI_PLAYER_EXIT_MILLIS = 200
 private val CHROME_SCROLL_THRESHOLD = 12.dp
-private val TAB_ROW_HEIGHT = 48.dp

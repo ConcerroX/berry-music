@@ -19,23 +19,17 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
-import art.rippledesign.compose.rui.LocalPageOwner
-import art.rippledesign.compose.rui.reportPageScrollable
 import com.berryos.music.core.datastore.AppSettingsRepository
-import com.berryos.music.core.designsystem.LocalPageChromeRegistry
 import com.berryos.music.core.designsystem.PlaceholderScreen
 import com.berryos.music.core.metadata.TagEntry
 import com.berryos.music.core.metadata.TrackTagField
@@ -71,17 +65,16 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Suppress("LongMethod")
 @Composable
-fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository, startInLyrics: Boolean = false) {
+fun TrackMetadataScreen(
+    track: Track?,
+    settings: AppSettingsRepository,
+    startInLyrics: Boolean = false,
+    topBar: @Composable (MetadataBarState) -> Unit,
+) {
     val viewModel: TrackTagViewModel = koinViewModel()
     LaunchedEffect(track) { viewModel.open(track) }
     val state by viewModel.state.collectAsState()
     val appSettings by settings.settings.collectAsState()
-    val appBarRegistry = LocalPageChromeRegistry.current
-    val currentOwner = LocalPageOwner.current
-    val owner = remember { currentOwner }
-    val appBarState = remember(appBarRegistry, owner) {
-        if (appBarRegistry == null || owner == null) null else appBarRegistry.state(owner).actions
-    }
     val writePermission = rememberTrackTagWritePermission()
     var selectedTab by rememberSaveable {
         mutableIntStateOf(if (startInLyrics) TAB_LYRICS else TAB_METADATA)
@@ -93,52 +86,43 @@ fun TrackMetadataScreen(track: Track?, settings: AppSettingsRepository, startInL
     )
     val canSave = (state as? TrackTagUiState.Ready)?.let { it.dirty && !it.saving } == true
     val tabPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
-    val saveState = rememberUpdatedState<() -> Unit>({
-        track?.let { writePermission.request(it) { viewModel.save() } }
-    })
-    DisposableEffect(appBarState) {
-        appBarState?.onSave = { saveState.value() }
-        appBarState?.onTabSelected = { selectedTab = it }
-        onDispose {
-            appBarState?.onSave = null
-            appBarState?.saveEnabled = false
-            appBarState?.tabLabels = emptyList()
-            appBarState?.selectedTabIndex = 0
-            appBarState?.selectedTabPosition = 0f
-            appBarState?.onTabSelected = {}
+    val barState = MetadataBarState(
+        onSave = { track?.let { writePermission.request(it) { viewModel.save() } } },
+        saveEnabled = canSave,
+        tabLabels = tabLabels,
+        selectedTabIndex = selectedTab,
+        selectedTabPosition = tabPosition,
+        onTabSelected = { selectedTab = it },
+    )
+    Column(modifier = Modifier.fillMaxSize()) {
+        topBar(barState)
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            when (val current = state) {
+                TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())
+
+                TrackTagUiState.Missing -> PlaceholderScreen(
+                    stringResource(Res.string.metadata),
+                    stringResource(Res.string.track_not_found),
+                )
+
+                TrackTagUiState.NotLocal -> PlaceholderScreen(
+                    stringResource(Res.string.metadata),
+                    stringResource(Res.string.metadata_only_local),
+                )
+
+                is TrackTagUiState.Error -> PlaceholderScreen(stringResource(Res.string.metadata), current.message)
+
+                is TrackTagUiState.Ready -> TabbedContent(
+                    state = current,
+                    pagerState = pagerState,
+                    selectedTab = selectedTab,
+                    onSelectedTabChange = { selectedTab = it },
+                    showTechnicalDetails = appSettings.showTechnicalDetails,
+                    onFilenameEdit = viewModel::editFilename,
+                    onEdit = viewModel::edit,
+                )
+            }
         }
-    }
-    SideEffect {
-        val bar = appBarState ?: return@SideEffect
-        bar.saveEnabled = canSave
-        bar.tabLabels = tabLabels
-        bar.selectedTabIndex = selectedTab
-        bar.selectedTabPosition = tabPosition
-    }
-    when (val current = state) {
-        TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())
-
-        TrackTagUiState.Missing -> PlaceholderScreen(
-            stringResource(Res.string.metadata),
-            stringResource(Res.string.track_not_found),
-        )
-
-        TrackTagUiState.NotLocal -> PlaceholderScreen(
-            stringResource(Res.string.metadata),
-            stringResource(Res.string.metadata_only_local),
-        )
-
-        is TrackTagUiState.Error -> PlaceholderScreen(stringResource(Res.string.metadata), current.message)
-
-        is TrackTagUiState.Ready -> TabbedContent(
-            state = current,
-            pagerState = pagerState,
-            selectedTab = selectedTab,
-            onSelectedTabChange = { selectedTab = it },
-            showTechnicalDetails = appSettings.showTechnicalDetails,
-            onFilenameEdit = viewModel::editFilename,
-            onEdit = viewModel::edit,
-        )
     }
 }
 
@@ -191,7 +175,6 @@ private fun TagInspectionList(
 ) {
     val inspection = state.inspection
     val listState = rememberLazyListState()
-    listState.reportPageScrollable()
     val entries = remember(inspection.entries) {
         inspection.entries.filterNot { it.field == TrackTagField.LYRICS }
     }

@@ -23,28 +23,13 @@ class ChromeStateTest {
     }
 
     @Test
-    fun appBarActionsAreScopedByOwner() {
-        val registry = PageChromeRegistry()
-        val albums = registry.state("albums")
-        val album = registry.state("album")
-
-        album.actions.tabLabels = listOf("Metadata", "Lyrics")
-        album.actions.saveEnabled = true
-
-        assertTrue(albums.actions.tabLabels.isEmpty())
-        assertFalse(albums.actions.saveEnabled)
-    }
-
-    @Test
     fun retainingRoutesDropsInactivePageState() {
         val registry = PageChromeRegistry()
         registry.state("album").scrollable.value = false
-        registry.state("album").actions.tabLabels = listOf("Metadata", "Lyrics")
 
         registry.retain(setOf("albums"))
 
         assertTrue(registry.state("album").scrollable.value)
-        assertTrue(registry.state("album").actions.tabLabels.isEmpty())
     }
 
     @Test
