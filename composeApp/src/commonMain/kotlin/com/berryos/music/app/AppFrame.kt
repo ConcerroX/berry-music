@@ -62,6 +62,7 @@ import art.rippledesign.compose.rui.LocalTopBarOffsetPx
 import art.rippledesign.compose.rui.PageScrollStateFactory
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
+import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
 import art.rippledesign.compose.rui.rememberRTopAppBarScrollBehavior
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
@@ -70,6 +71,7 @@ import com.berryos.music.app.navigation.AppActions
 import com.berryos.music.app.navigation.AppearanceRoute
 import com.berryos.music.app.navigation.ArtistRoute
 import com.berryos.music.app.navigation.ArtistsRoute
+import com.berryos.music.app.navigation.ContainerTransformKey
 import com.berryos.music.app.navigation.FolderRoute
 import com.berryos.music.app.navigation.HomeRoute
 import com.berryos.music.app.navigation.LibrarySettingsRoute
@@ -82,6 +84,8 @@ import com.berryos.music.app.navigation.ServersRoute
 import com.berryos.music.app.navigation.SettingsRoute
 import com.berryos.music.app.navigation.SongsRoute
 import com.berryos.music.app.navigation.TrackMetadataRoute
+import com.berryos.music.app.navigation.albumTransformKey
+import com.berryos.music.app.navigation.artistTransformKey
 import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
@@ -143,6 +147,23 @@ internal fun AppFrame(
     val isRoot = selectedTab.backStack.size == 1
     val route = selectedTab.backStack.lastOrNull()
     val isDetailRoute = route is AlbumRoute || route is ArtistRoute
+    // One transform controller per tab: each tab has its own back stack, so a detail page open in
+    // another tab must not block transforms here.
+    val transformControllers = remember {
+        List(tabs.size) { RContainerTransformNavController<ContainerTransformKey>() }
+    }
+    val transformController = transformControllers[selectedTabIndex]
+    val detailTransformKey = when (route) {
+        is AlbumRoute -> albumTransformKey(route.source, route.albumId)
+        is ArtistRoute -> artistTransformKey(route.source, route.artistId)
+        else -> null
+    }
+    // The frame-drawn bar behind a detail page exists only to bridge the container transform that
+    // presents it over its source list; scenes of any other transition paint their own opaque bar,
+    // so drawing it meanwhile would show the source tab's title through the fade.
+    val showDetailBackdrop = detailTransformKey != null &&
+        transformController.activeKey == detailTransformKey &&
+        transformController.transitionRunning
     val title = routeTitle(route)
     val detailCoverUrl = when (route) {
         is AlbumRoute -> libraryState.albumCoverUrl(route.source, route.albumId)
@@ -176,7 +197,8 @@ internal fun AppFrame(
         ),
         label = "bottomBarOffset",
     )
-    val rootBarsVisible = isRoot || barHandsOffToMiniPlayer
+    // The edit page keeps the persistent mini player above its content, like a detail page does.
+    val rootBarsVisible = isRoot || barHandsOffToMiniPlayer || route is TrackMetadataRoute
     val rootBarsOffset by animateFloatAsState(
         targetValue = if (rootBarsVisible) 0f else 1f,
         animationSpec = tween(
@@ -320,7 +342,7 @@ internal fun AppFrame(
                 val contentStart = if (!compact && isRoot) railWidth else 0.dp
                 // Detail pages draw their own top bar and fill the screen, so the global bar stays
                 // behind their content.
-                if (isDetailRoute) {
+                if (showDetailBackdrop) {
                     TopBarOverlay(
                         title = routeTitle(selectedTab.backStack.firstOrNull()),
                         onBack = null,
@@ -337,7 +359,7 @@ internal fun AppFrame(
                     isDetailRoute = isDetailRoute,
                     tabs = tabs,
                     selectedTabIndex = selectedTabIndex,
-                    showMiniPlayer = showMiniPlayer && !isRoot && !isDetailRoute,
+                    showMiniPlayer = showMiniPlayer && !isRoot && !isDetailRoute && route !is TrackMetadataRoute,
                     miniCoverUrl = miniCoverUrl,
                     playbackState = playbackState,
                     playbackPosition = playbackPosition,
@@ -361,6 +383,7 @@ internal fun AppFrame(
                     TabContent(
                         tabs = tabs,
                         selectedIndex = selectedTabIndex,
+                        transformControllers = transformControllers,
                         actions = actions,
                         libraryState = libraryState,
                         playbackState = playbackState,

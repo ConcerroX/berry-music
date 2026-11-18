@@ -1,10 +1,16 @@
 package com.berryos.music.app
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -14,7 +20,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -28,6 +37,7 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.scene.rememberNavigationEventState
 import androidx.navigation3.scene.rememberSceneState
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigation3.ui.defaultPopTransitionSpec
 import androidx.navigation3.ui.defaultPredictivePopTransitionSpec
@@ -35,11 +45,14 @@ import androidx.navigation3.ui.defaultTransitionSpec
 import androidx.navigationevent.NavigationEventTransitionState
 import androidx.navigationevent.compose.NavigationEventHandler
 import art.rippledesign.compose.rui.fadeThrough
+import art.rippledesign.compose.rui.navigation3.LocalNavTransitionHoldMillis
 import art.rippledesign.compose.rui.navigation3.LocalRContainerTransformNavigationEventState
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavController
 import art.rippledesign.compose.rui.navigation3.RContainerTransformNavEntry
 import art.rippledesign.compose.rui.navigation3.rContainerTransformTransition
-import art.rippledesign.compose.rui.navigation3.rememberRContainerTransformNavController
+import art.rippledesign.compose.rui.navigation3.rNeutralSceneTransition
+import art.rippledesign.compose.rui.navigation3.rememberNavTransitionHold
+import art.rippledesign.compose.rui.navigation3.rememberNavTransitionHoldDecorator
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
@@ -101,6 +114,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun TabContent(
     tabs: List<TabItem>,
     selectedIndex: Int,
+    transformControllers: List<RContainerTransformNavController<ContainerTransformKey>>,
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
@@ -122,6 +136,7 @@ internal fun TabContent(
     ) { index ->
         AppNavDisplay(
             tabs[index].backStack,
+            transformControllers[index],
             actions,
             libraryState,
             playbackState,
@@ -143,6 +158,7 @@ internal fun TabContent(
 @Composable
 private fun AppNavDisplay(
     backStack: NavBackStack<NavKey>,
+    controller: RContainerTransformNavController<ContainerTransformKey>,
     actions: AppActions,
     libraryState: LibraryUiState,
     playbackState: PlaybackState,
@@ -157,7 +173,6 @@ private fun AppNavDisplay(
     onCoverPalette: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val controller = rememberRContainerTransformNavController<ContainerTransformKey>()
     // MDC's scrolling view is offset by the app bar's current bottom edge; the inset tracks the
     // bar offset so the content fills the space the bar leaves instead of showing a gap. The mini
     // player inset is a container inset so the list (and its overscroll glow) ends above it.
@@ -181,6 +196,7 @@ private fun AppNavDisplay(
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
+            rememberNavTransitionHoldDecorator(),
         ),
         entryProvider = entryProvider {
             entry<HomeRoute> { PaddedScreen(rootPadding) { HomeScreen(actions, libraryState) } }
@@ -252,35 +268,41 @@ private fun AppNavDisplay(
             }
             entry<PlaylistRoute> { route -> PaddedScreen(pushedPadding) { PlaylistScreen(route.playlistId) } }
             entry<FolderRoute> { route -> PaddedScreen(pushedPadding) { FolderScreen(route.folderId) } }
-            entry<TrackMetadataRoute> { route ->
+            entry<TrackMetadataRoute>(
+                metadata = mapOf(DIALOG_PAGE_TAG_KEY to true),
+            ) { route ->
+                // The dialog surface stays inside the padded content area so the background mini
+                // player keeps showing in the reserved bottom inset.
                 PaddedScreen(ownedTopBarPadding) {
-                    val resolved = (libraryState as? LibraryUiState.Ready)
-                        ?.snapshot
-                        ?.tracks
-                        ?.firstOrNull { it.source == route.source && it.id == route.trackId }
-                    // Keep the last resolved track while the library reloads after a save.
-                    var track by remember(route) { mutableStateOf(resolved) }
-                    LaunchedEffect(resolved) {
-                        if (resolved != null) track = resolved
+                    DialogPageTransition {
+                        val resolved = (libraryState as? LibraryUiState.Ready)
+                            ?.snapshot
+                            ?.tracks
+                            ?.firstOrNull { it.source == route.source && it.id == route.trackId }
+                        // Keep the last resolved track while the library reloads after a save.
+                        var track by remember(route) { mutableStateOf(resolved) }
+                        LaunchedEffect(resolved) {
+                            if (resolved != null) track = resolved
+                        }
+                        TrackMetadataScreen(
+                            track,
+                            settings,
+                            startInLyrics = route.startInLyrics,
+                            topBar = { topBarState ->
+                                AppTopBar(
+                                    title = stringResource(Res.string.edit),
+                                    onBack = actions.back,
+                                    onMenu = null,
+                                    onSave = topBarState.onSave,
+                                    saveEnabled = topBarState.saveEnabled,
+                                    tabLabels = topBarState.tabLabels,
+                                    selectedTabIndex = topBarState.selectedTabIndex,
+                                    selectedTabPosition = topBarState.selectedTabPosition,
+                                    onTabSelected = topBarState.onTabSelected,
+                                )
+                            },
+                        )
                     }
-                    TrackMetadataScreen(
-                        track,
-                        settings,
-                        startInLyrics = route.startInLyrics,
-                        topBar = { topBarState ->
-                            AppTopBar(
-                                title = stringResource(Res.string.edit),
-                                onBack = actions.back,
-                                onMenu = null,
-                                onSave = topBarState.onSave,
-                                saveEnabled = topBarState.saveEnabled,
-                                tabLabels = topBarState.tabLabels,
-                                selectedTabIndex = topBarState.selectedTabIndex,
-                                selectedTabPosition = topBarState.selectedTabPosition,
-                                onTabSelected = topBarState.onTabSelected,
-                            )
-                        },
-                    )
                 }
             }
             entry<AppearanceRoute> { PaddedScreen(pushedPadding) { AppearanceScreen(settings) } }
@@ -340,7 +362,17 @@ private fun AppNavDisplay(
             if (controller.transitionRunning) Modifier.clearAndSetSemantics { } else Modifier,
         ),
     ) {
-        CompositionLocalProvider(LocalRContainerTransformNavigationEventState provides navigationEventState) {
+        CompositionLocalProvider(
+            LocalRContainerTransformNavigationEventState provides navigationEventState,
+            // While the dialog page is on top, the covered entry must hold its no-op exit so it
+            // stays composed (and visible) for the dialog transition.
+            LocalNavTransitionHoldMillis provides
+                if (backStack.lastOrNull() is TrackMetadataRoute) {
+                    DIALOG_PAGE_TRANSITION_MILLIS
+                } else {
+                    null
+                },
+        ) {
             // Container transform pairs get a duration-only scene transition: the transform draws
             // the visuals, while the transition keeps both scenes composed for its length.
             NavDisplay(
@@ -348,28 +380,40 @@ private fun AppNavDisplay(
                 navigationEventState = navigationEventState,
                 modifier = Modifier.fillMaxSize(),
                 transitionSpec = {
-                    if (isContainerTransformPair(initialState, targetState)) {
-                        rContainerTransformTransition(ContainerTransformSpec.enterDurationMillis)
-                    } else {
-                        defaultTransitionSpec<NavKey>().invoke(this)
+                    when {
+                        isContainerTransformPair(initialState, targetState) ->
+                            rContainerTransformTransition(ContainerTransformSpec.enterDurationMillis)
+
+                        isDialogPagePair(initialState, targetState) ->
+                            rNeutralSceneTransition(DIALOG_PAGE_TRANSITION_MILLIS)
+
+                        else -> defaultTransitionSpec<NavKey>().invoke(this)
                     }
                 },
                 popTransitionSpec = {
-                    if (isContainerTransformPair(initialState, targetState)) {
-                        rContainerTransformTransition(
-                            ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
-                        )
-                    } else {
-                        defaultPopTransitionSpec<NavKey>().invoke(this)
+                    when {
+                        isContainerTransformPair(initialState, targetState) ->
+                            rContainerTransformTransition(
+                                ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
+                            )
+
+                        isDialogPagePair(initialState, targetState) ->
+                            rNeutralSceneTransition(DIALOG_PAGE_TRANSITION_MILLIS)
+
+                        else -> defaultPopTransitionSpec<NavKey>().invoke(this)
                     }
                 },
                 predictivePopTransitionSpec = { swipeEdge ->
-                    if (isContainerTransformPair(initialState, targetState)) {
-                        rContainerTransformTransition(
-                            ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
-                        )
-                    } else {
-                        defaultPredictivePopTransitionSpec<NavKey>().invoke(this, swipeEdge)
+                    when {
+                        isContainerTransformPair(initialState, targetState) ->
+                            rContainerTransformTransition(
+                                ContainerTransformSpec.returnDurationMillis + CONTAINER_TRANSFORM_TAIL_MILLIS,
+                            )
+
+                        isDialogPagePair(initialState, targetState) ->
+                            rNeutralSceneTransition(DIALOG_PAGE_TRANSITION_MILLIS)
+
+                        else -> defaultPredictivePopTransitionSpec<NavKey>().invoke(this, swipeEdge)
                     }
                 },
             )
@@ -433,10 +477,91 @@ private fun isContainerTransformPair(initial: Scene<NavKey>, target: Scene<NavKe
     return albumsPair || artistsPair
 }
 
+private const val DIALOG_PAGE_DURATION_MILLIS = 200
+
+// MaterialFade ends the incoming fade at 30% of the transition.
+private const val DIALOG_PAGE_CONTENT_FADE_MILLIS = 60
+
+// Exit is the MaterialFade outgoing fade: the page and the scrim fade out together, without
+// scaling.
+private const val DIALOG_PAGE_EXIT_FADE_MILLIS = 100
+
+// The scene transition outlives the page animation so the exit finishes before disposal.
+private const val DIALOG_PAGE_TRANSITION_MILLIS = DIALOG_PAGE_DURATION_MILLIS + 50
+private const val DIALOG_PAGE_START_SCALE = 0.8f
+private const val DIALOG_PAGE_SCRIM_ALPHA = 0.32f
+
+private const val DIALOG_PAGE_TAG_KEY = "berry.dialogPage"
+
+private fun Scene<NavKey>.isDialogPage(): Boolean = entries.lastOrNull()?.metadata?.get(DIALOG_PAGE_TAG_KEY) == true
+
+private fun isDialogPagePair(initial: Scene<NavKey>, target: Scene<NavKey>): Boolean =
+    initial.isDialogPage() || target.isDialogPage()
+
 @Composable
 private fun PaddedScreen(padding: PaddingValues, content: @Composable () -> Unit) {
     Box(Modifier.fillMaxSize().padding(padding)) {
         content()
+    }
+}
+
+/**
+ * Presents a page like an MDC dialog: the page scales up from [DIALOG_PAGE_START_SCALE] and fades
+ * in over its first [DIALOG_PAGE_CONTENT_FADE_MILLIS], while a scrim over the page below fades in
+ * across the whole [DIALOG_PAGE_DURATION_MILLIS]. The exit is the Material fade: the page and the
+ * scrim fade out together in [DIALOG_PAGE_EXIT_FADE_MILLIS] without scaling. The scene transition is
+ * neutral, so the page below stays in place.
+ */
+@Composable
+private fun DialogPageTransition(content: @Composable () -> Unit) {
+    rememberNavTransitionHold(DIALOG_PAGE_TRANSITION_MILLIS)
+    val transition = LocalNavAnimatedContentScope.current.transition
+    val target = transition.targetState
+    val progress by transition.animateFloat(
+        transitionSpec = { tween(DIALOG_PAGE_DURATION_MILLIS, easing = LinearEasing) },
+        label = "dialogPageProgress",
+        targetValueByState = { if (it == EnterExitState.Visible) 1f else 0f },
+    )
+    val contentAlpha by transition.animateFloat(
+        transitionSpec = {
+            if (targetState == EnterExitState.Visible) {
+                tween(DIALOG_PAGE_CONTENT_FADE_MILLIS, easing = LinearEasing)
+            } else {
+                tween(DIALOG_PAGE_EXIT_FADE_MILLIS, easing = LinearEasing)
+            }
+        },
+        label = "dialogPageContentAlpha",
+        targetValueByState = { if (it == EnterExitState.Visible) 1f else 0f },
+    )
+    val entering = target == EnterExitState.Visible
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBehind {
+                // Read in the draw phase so the scrim does not recompose every frame.
+                drawRect(color = Color.Black, alpha = DIALOG_PAGE_SCRIM_ALPHA * progress)
+            },
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Only the entry scales; the exit is a plain fade.
+                    val scale = if (entering) {
+                        DIALOG_PAGE_START_SCALE +
+                            (1f - DIALOG_PAGE_START_SCALE) * progress
+                    } else {
+                        1f
+                    }
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = contentAlpha
+                    transformOrigin = TransformOrigin.Center
+                }
+                .background(MaterialTheme.colors.background),
+        ) {
+            content()
+        }
     }
 }
 
