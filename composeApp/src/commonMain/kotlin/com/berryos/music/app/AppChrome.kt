@@ -57,12 +57,12 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import art.rippledesign.compose.rui.LocalPageOwner
-import art.rippledesign.compose.rui.LocalPageScrollStateProvider
+import art.rippledesign.compose.rui.LocalPageScrollStateFactory
 import art.rippledesign.compose.rui.LocalTopBarOffsetPx
-import art.rippledesign.compose.rui.PageScrollStateProvider
+import art.rippledesign.compose.rui.PageScrollStateFactory
 import art.rippledesign.compose.rui.RBottomNavigation
 import art.rippledesign.compose.rui.RBottomNavigationItem
-import art.rippledesign.compose.rui.rememberRAppBarScrollBehavior
+import art.rippledesign.compose.rui.rememberRTopAppBarScrollBehavior
 import com.berryos.music.app.navigation.AboutRoute
 import com.berryos.music.app.navigation.AlbumRoute
 import com.berryos.music.app.navigation.AlbumsRoute
@@ -86,7 +86,7 @@ import com.berryos.music.core.auth.AuthController
 import com.berryos.music.core.auth.AuthState
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.CoverPaletteDialog
-import com.berryos.music.core.designsystem.PageChromeRegistry
+import com.berryos.music.core.designsystem.PageTopBarStates
 import com.berryos.music.core.designsystem.cachedCoverColors
 import com.berryos.music.core.designsystem.rememberDefaultCoverColors
 import com.berryos.music.core.library.LibraryUiState
@@ -207,30 +207,30 @@ internal fun AppChrome(
     )
     // The app bar behavior lives in RUI; the offsets are kept per route here: returning to a
     // scrolled page restores its hidden bar, while a newly opened page starts with it visible.
-    val pageChromeRegistry = remember { PageChromeRegistry() }
+    val pageTopBarStates = remember { PageTopBarStates() }
     LaunchedEffect(tabs.map { it.backStack.toList() }) {
-        pageChromeRegistry.retain(tabs.flatMap { it.backStack }.toSet())
+        pageTopBarStates.retainAll(tabs.flatMap { it.backStack }.toSet())
     }
     val routeKey: Any = route ?: selectedTab
-    val pageChrome = pageChromeRegistry.state(routeKey)
-    val ownsTopBar = isDetailRoute || route is TrackMetadataRoute
+    val pageTopBarState = pageTopBarStates.stateFor(routeKey)
+    val hasOwnTopBar = isDetailRoute || route is TrackMetadataRoute
     val topBarHeightPx = with(density) { topBarHeight.toPx() }
     val topBarHeightState = rememberUpdatedState(topBarHeightPx)
     val scrollableBarHeightState = rememberUpdatedState(topBarHeightPx)
     val routeState = rememberUpdatedState(routeKey)
-    val pageScrollable = pageChrome.scrollable
+    val isPageScrollable = pageTopBarState.isScrollable
     var previousRouteKey by remember { mutableStateOf<Any?>(null) }
     // A detail route inherits the bar position of the page it was opened from, so the bar keeps
     // its state while the transform runs instead of jumping to visible under it.
-    val inheritedOffsetPx = previousRouteKey?.let { pageChromeRegistry.state(it).topBarOffset } ?: 0f
+    val inheritedOffsetPx = previousRouteKey?.let { pageTopBarStates.stateFor(it).topBarOffset } ?: 0f
     val fallbackOffsetPx = if (isDetailRoute) inheritedOffsetPx else 0f
     // Pages that own their top bar also own the scroll relationship with it.
-    val ownsTopBarState = rememberUpdatedState(ownsTopBar)
-    val appBarScroll = rememberRAppBarScrollBehavior(
+    val hasOwnTopBarState = rememberUpdatedState(hasOwnTopBar)
+    val appBarScroll = rememberRTopAppBarScrollBehavior(
         barHeightPx = { scrollableBarHeightState.value },
-        enabled = { !ownsTopBarState.value && pageScrollable.value },
-        offset = { pageChromeRegistry.state(routeState.value).topBarOffset },
-        onOffsetChange = { pageChromeRegistry.state(routeState.value).updateTopBarOffset(it) },
+        enabled = { !hasOwnTopBarState.value && isPageScrollable.value },
+        offset = { pageTopBarStates.stateFor(routeState.value).topBarOffset },
+        onOffsetChange = { pageTopBarStates.stateFor(routeState.value).updateTopBarOffset(it) },
     )
     LaunchedEffect(routeKey) {
         appBarScroll.cancelSnap()
@@ -239,30 +239,30 @@ internal fun AppChrome(
             // A snap may still be running when the user opens another page; settle the old page to
             // the nearer edge so it is never left partially collapsed.
             val height = scrollableBarHeightState.value
-            val previousChrome = pageChromeRegistry.state(previous)
-            val offset = previousChrome.topBarOffset
+            val previousTopBarState = pageTopBarStates.stateFor(previous)
+            val offset = previousTopBarState.topBarOffset
             if (offset > 0f && offset < height) {
-                previousChrome.updateTopBarOffset(if (offset > height / 2f) height else 0f)
+                previousTopBarState.updateTopBarOffset(if (offset > height / 2f) height else 0f)
             }
             if (isDetailRoute) {
-                pageChromeRegistry.state(routeKey).updateTopBarOffset(previousChrome.topBarOffset)
+                pageTopBarStates.stateFor(routeKey).updateTopBarOffset(previousTopBarState.topBarOffset)
             }
         }
         previousRouteKey = routeKey
     }
     // A page whose content fits keeps its bar visible; this also clears an offset restored for a
     // page whose content has since become shorter than the viewport.
-    LaunchedEffect(routeKey, pageScrollable.value) {
-        if (!pageScrollable.value && !isDetailRoute) {
+    LaunchedEffect(routeKey, isPageScrollable.value) {
+        if (!isPageScrollable.value && !isDetailRoute) {
             appBarScroll.cancelSnap()
-            pageChromeRegistry.state(routeKey).updateTopBarOffset(0f)
+            pageTopBarStates.stateFor(routeKey).updateTopBarOffset(0f)
         }
     }
-    val topBarOffsetPx = (if (pageChrome.hasTopBarOffset) pageChrome.topBarOffset else fallbackOffsetPx)
+    val topBarOffsetPx = (if (pageTopBarState.hasTopBarOffset) pageTopBarState.topBarOffset else fallbackOffsetPx)
         .coerceIn(0f, topBarHeightPx)
     val exposedTopBarOffset = remember {
         derivedStateOf {
-            pageChromeRegistry.state(routeState.value)
+            pageTopBarStates.stateFor(routeState.value)
                 .topBarOffset
                 .coerceIn(0f, topBarHeightState.value)
         }
@@ -353,8 +353,8 @@ internal fun AppChrome(
                 }
                 CompositionLocalProvider(
                     LocalPageOwner provides routeKey,
-                    LocalPageScrollStateProvider provides PageScrollStateProvider { owner ->
-                        pageChromeRegistry.state(owner).scrollable
+                    LocalPageScrollStateFactory provides PageScrollStateFactory { owner ->
+                        pageTopBarStates.stateFor(owner).isScrollable
                     },
                     LocalTopBarOffsetPx provides exposedTopBarOffset,
                 ) {
@@ -377,7 +377,7 @@ internal fun AppChrome(
                     )
                 }
                 // Pages scroll under the bar, so the bar is drawn above their content.
-                if (!ownsTopBar) {
+                if (!hasOwnTopBar) {
                     TopBarOverlay(
                         title = title,
                         onBack = onBack,

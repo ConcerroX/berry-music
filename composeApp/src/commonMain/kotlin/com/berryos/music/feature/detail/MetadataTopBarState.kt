@@ -1,7 +1,7 @@
 package com.berryos.music.feature.detail
 
 /** Controls rendered by the page-owned metadata top bar. */
-data class MetadataBarState(
+data class MetadataTopBarState(
     val onSave: () -> Unit,
     val saveEnabled: Boolean,
     val tabLabels: List<String>,

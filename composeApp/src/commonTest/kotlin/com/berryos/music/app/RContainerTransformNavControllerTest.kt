@@ -53,12 +53,12 @@ class RContainerTransformNavControllerTest {
         val controller = RContainerTransformNavController<String>()
 
         controller.request("album")
-        controller.setReturningToSource(true)
+        controller.updateReturningToSource(true)
 
         assertNull(controller.returningKey)
 
         controller.markEntered("album")
-        controller.setReturningToSource(true)
+        controller.updateReturningToSource(true)
 
         assertEquals("album", controller.returningKey)
     }
@@ -68,12 +68,12 @@ class RContainerTransformNavControllerTest {
         val controller = RContainerTransformNavController<String>()
 
         controller.request("album")
-        controller.setGestureReturningToSource(true)
+        controller.updateGestureReturningToSource(true)
 
         assertNull(controller.gestureReturningKey)
 
         controller.markEntered("album")
-        controller.setGestureReturningToSource(true)
+        controller.updateGestureReturningToSource(true)
 
         assertEquals("album", controller.gestureReturningKey)
     }

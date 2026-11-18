@@ -267,17 +267,17 @@ private fun AppNavDisplay(
                         track,
                         settings,
                         startInLyrics = route.startInLyrics,
-                        topBar = { bar ->
+                        topBar = { topBarState ->
                             AppTopBar(
                                 title = stringResource(Res.string.edit),
                                 onBack = actions.back,
                                 onMenu = null,
-                                onSave = bar.onSave,
-                                saveEnabled = bar.saveEnabled,
-                                tabLabels = bar.tabLabels,
-                                selectedTabIndex = bar.selectedTabIndex,
-                                selectedTabPosition = bar.selectedTabPosition,
-                                onTabSelected = bar.onTabSelected,
+                                onSave = topBarState.onSave,
+                                saveEnabled = topBarState.saveEnabled,
+                                tabLabels = topBarState.tabLabels,
+                                selectedTabIndex = topBarState.selectedTabIndex,
+                                selectedTabPosition = topBarState.selectedTabPosition,
+                                onTabSelected = topBarState.onTabSelected,
                             )
                         },
                     )
@@ -317,8 +317,8 @@ private fun AppNavDisplay(
         ?.metadata
         ?.get(CONTAINER_TRANSFORM_TAG_KEY)
     SideEffect {
-        controller.setReturningToSource(returningToSource)
-        controller.setGestureReturningToSource(
+        controller.updateReturningToSource(returningToSource)
+        controller.updateGestureReturningToSource(
             sourceSceneTag != null && gestureTargetTag == sourceSceneTag,
         )
     }
@@ -446,7 +446,7 @@ private fun DetailTopBar(actions: AppActions, contentColor: Color?, onCoverPalet
         title = null,
         onBack = actions.back,
         onMenu = null,
-        transparent = true,
+        isTransparent = true,
         contentColor = contentColor,
         onCoverPalette = onCoverPalette,
     )

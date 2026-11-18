@@ -69,7 +69,7 @@ fun TrackMetadataScreen(
     track: Track?,
     settings: AppSettingsRepository,
     startInLyrics: Boolean = false,
-    topBar: @Composable (MetadataBarState) -> Unit,
+    topBar: @Composable (MetadataTopBarState) -> Unit,
 ) {
     val viewModel: TrackTagViewModel = koinViewModel()
     LaunchedEffect(track) { viewModel.open(track) }
@@ -86,7 +86,7 @@ fun TrackMetadataScreen(
     )
     val canSave = (state as? TrackTagUiState.Ready)?.let { it.dirty && !it.saving } == true
     val tabPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
-    val barState = MetadataBarState(
+    val topBarState = MetadataTopBarState(
         onSave = { track?.let { writePermission.request(it) { viewModel.save() } } },
         saveEnabled = canSave,
         tabLabels = tabLabels,
@@ -95,7 +95,7 @@ fun TrackMetadataScreen(
         onTabSelected = { selectedTab = it },
     )
     Column(modifier = Modifier.fillMaxSize()) {
-        topBar(barState)
+        topBar(topBarState)
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
             when (val current = state) {
                 TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())

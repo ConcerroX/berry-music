@@ -6,10 +6,10 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-/** Chrome state owned by one route: scrollability and bar offset. */
+/** Top bar state owned by one route: scrollability and bar offset. */
 @Stable
-class PageChromeState {
-    val scrollable = mutableStateOf(true)
+class PageTopBarState {
+    val isScrollable = mutableStateOf(true)
     var topBarOffset by mutableStateOf(0f)
         private set
     var hasTopBarOffset by mutableStateOf(false)
@@ -21,14 +21,14 @@ class PageChromeState {
     }
 }
 
-/** Per-route chrome state; an outgoing page cannot overwrite the current page's chrome. */
+/** Per-route top bar states; an outgoing page cannot overwrite the current page's top bar. */
 @Stable
-class PageChromeRegistry {
-    private val states = mutableStateMapOf<Any, PageChromeState>()
+class PageTopBarStates {
+    private val states = mutableStateMapOf<Any, PageTopBarState>()
 
-    fun state(owner: Any): PageChromeState = states.getOrPut(owner) { PageChromeState() }
+    fun stateFor(owner: Any): PageTopBarState = states.getOrPut(owner) { PageTopBarState() }
 
-    fun retain(owners: Set<Any>) {
+    fun retainAll(owners: Set<Any>) {
         states.keys.retainAll(owners)
     }
 }

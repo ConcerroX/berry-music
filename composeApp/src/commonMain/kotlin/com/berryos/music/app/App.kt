@@ -161,7 +161,7 @@ internal fun AppShell(
             title = null,
             onBack = { scope.launch { playbackSheetState.hide() } },
             onMenu = null,
-            transparent = true,
+            isTransparent = true,
             contentColor = contentColor,
             backIcon = Res.drawable.ic_expand_more,
             backLabel = Res.string.collapse,

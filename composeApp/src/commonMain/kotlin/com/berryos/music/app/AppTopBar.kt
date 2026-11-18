@@ -51,7 +51,7 @@ internal fun AppTopBar(
     title: String?,
     onBack: (() -> Unit)?,
     onMenu: (() -> Unit)?,
-    transparent: Boolean = false,
+    isTransparent: Boolean = false,
     contentColor: Color? = null,
     onCoverPalette: (() -> Unit)? = null,
     onSave: (() -> Unit)? = null,
@@ -95,14 +95,14 @@ internal fun AppTopBar(
     }
     val hasTabs = tabLabels.isNotEmpty()
     val barElevation = if (hasTabs) 0.dp else AppBarDefaults.TopAppBarElevation
-    val barBackground = if (transparent) Color.Transparent else MaterialTheme.colors.primarySurface
-    val shadow = if (hasTabs && !transparent) {
+    val barBackground = if (isTransparent) Color.Transparent else MaterialTheme.colors.primarySurface
+    val shadow = if (hasTabs && !isTransparent) {
         Modifier.shadow(AppBarDefaults.TopAppBarElevation)
     } else {
         Modifier
     }
     Column(modifier = shadow.background(barBackground)) {
-        Toolbar(title, navIcon, onSave, saveEnabled, more, transparent, contentColor, barElevation)
+        Toolbar(title, navIcon, onSave, saveEnabled, more, isTransparent, contentColor, barElevation)
         if (hasTabs) {
             TopBarTabs(tabLabels, selectedTabIndex, selectedTabPosition, onTabSelected)
         }
@@ -116,11 +116,11 @@ private fun Toolbar(
     onSave: (() -> Unit)?,
     saveEnabled: Boolean,
     more: (@Composable () -> Unit)?,
-    transparent: Boolean,
+    isTransparent: Boolean,
     contentColor: Color?,
     elevation: Dp,
 ) {
-    if (transparent) {
+    if (isTransparent) {
         RTopAppBar(
             title = { title?.let { Text(it) } },
             navigationIcon = navigationIcon,
