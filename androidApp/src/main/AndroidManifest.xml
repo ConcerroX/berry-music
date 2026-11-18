@@ -17,6 +17,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BerryMusic">
 
+        <profileable android:shell="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
