@@ -27,6 +27,13 @@ fun cachedCoverColors(coverUrl: String): CoverColors? = coverColorsCache[coverUr
 /** Cached background color of a cover, or null while the palette is not available. */
 fun cachedCoverBackground(coverUrl: String?): Color? = coverUrl?.let(::cachedCoverColors)?.background
 
+/**
+ * Page background for [coverUrl], falling back to the default cover palette while the cover
+ * palette is not cached yet.
+ */
+fun coverPageBackground(coverUrl: String?, fallbackPalette: CoverColors?): Color? =
+    cachedCoverBackground(coverUrl) ?: fallbackPalette?.background
+
 fun cacheCoverColors(coverUrl: String, colors: CoverColors) {
     coverColorsCache[coverUrl] = colors
 }
