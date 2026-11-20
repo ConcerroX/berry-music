@@ -197,8 +197,9 @@ internal fun AppFrame(
         ),
         label = "bottomBarOffset",
     )
-    // The edit page keeps the persistent mini player above its content, like a detail page does.
-    val rootBarsVisible = isRoot || barHandsOffToMiniPlayer || route is TrackMetadataRoute
+    // The persistent bottom bars belong to root pages and to detail pages that hand off to the mini
+    // player; pushed pages and the edit page hide them.
+    val rootBarsVisible = isRoot || barHandsOffToMiniPlayer
     val rootBarsOffset by animateFloatAsState(
         targetValue = if (rootBarsVisible) 0f else 1f,
         animationSpec = tween(
