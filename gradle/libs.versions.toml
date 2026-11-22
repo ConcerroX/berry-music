@@ -20,7 +20,7 @@ media3 = "1.6.1"
 androidx-activityCompose = "1.13.0"
 androidx-testRunner = "1.7.0"
 androidx-testExtJunit = "1.3.0"
-androidx-palette = "1.0.0"
+kmpalette = "4.0.0"
 android-compileSdk = "37"
 android-minSdk = "26"
 android-targetSdk = "36"
@@ -52,7 +52,7 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 logto-android = { module = "io.logto.sdk:android", version.ref = "logto" }
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
-androidx-palette = { module = "androidx.palette:palette", version.ref = "androidx-palette" }
+kmpalette-androidx-palette = { module = "com.materialkolor.palette:androidx-palette", version.ref = "kmpalette" }
 compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
 
 [plugins]
