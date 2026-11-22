@@ -59,16 +59,16 @@ private val BackGestureEasing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
 private val DecelerateEasing = Easing { input -> 1f - (1f - input) * (1f - input) }
 
 @Composable
-internal fun rememberPredictiveBackTransition(): PredictiveBackTransition {
+internal fun rememberPredictiveBackState(): PredictiveBackState {
     val scope = rememberCoroutineScope()
-    return remember(scope) { PredictiveBackTransition(scope) }
+    return remember(scope) { PredictiveBackState(scope) }
 }
 
 /**
  * Follows a predictive back gesture with AOSP's cross-activity geometry and settles the committed
  * gesture with the platform's post-commit animation.
  */
-internal class PredictiveBackTransition(private val scope: CoroutineScope) {
+internal class PredictiveBackState(private val scope: CoroutineScope) {
     var active by mutableStateOf(false)
         private set
     var progress by mutableFloatStateOf(0f)
@@ -226,7 +226,7 @@ internal class PredictiveBackTransition(private val scope: CoroutineScope) {
     private data class ProgressSample(val timeMillis: Long, val progress: Float)
 }
 
-internal fun GraphicsLayerScope.applyPredictiveBackTransform(transition: PredictiveBackTransition, editPage: Boolean) {
+internal fun GraphicsLayerScope.applyPredictiveBackTransform(transition: PredictiveBackState, editPage: Boolean) {
     if (!transition.active) {
         compositingStrategy = CompositingStrategy.Auto
         return
@@ -259,7 +259,7 @@ internal fun GraphicsLayerScope.applyPredictiveBackTransform(transition: Predict
 }
 
 private fun gestureGeometry(
-    transition: PredictiveBackTransition,
+    transition: PredictiveBackState,
     editPage: Boolean,
     width: Float,
     height: Float,
@@ -311,7 +311,7 @@ private fun geometryAt(
 }
 
 private fun committedGeometry(
-    transition: PredictiveBackTransition,
+    transition: PredictiveBackState,
     editPage: Boolean,
     width: Float,
     height: Float,

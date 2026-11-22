@@ -198,7 +198,7 @@ private fun AppNavDisplay(
         end = 0.dp,
         bottom = if (showMiniPlayer) barMetrics.miniPlayerHeight else 0.dp,
     )
-    val predictiveBack = rememberPredictiveBackTransition()
+    val predictiveBack = rememberPredictiveBackState()
     // A back event that arrives while the committed gesture settles. Disabling back instead would
     // fall through to the activity and finish it.
     val pendingBack = remember { mutableStateOf(false) }
@@ -568,7 +568,7 @@ private fun isEditPagePair(initial: Scene<NavKey>, target: Scene<NavKey>): Boole
 
 @Composable
 private fun rememberEditPageDecorator(
-    predictiveBack: PredictiveBackTransition,
+    predictiveBack: PredictiveBackState,
     scrim: State<Color>,
     slideActive: MutableState<Boolean>,
 ): NavEntryDecorator<NavKey> = remember(predictiveBack, scrim, slideActive) {
