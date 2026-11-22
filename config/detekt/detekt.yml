@@ -5,3 +5,22 @@ ktlint:
 naming:
   FunctionNaming:
     ignoreAnnotated: ['Composable']
+
+complexity:
+  TooManyFunctions:
+    allowedFunctionsPerFile: 30
+    allowedFunctionsPerClass: 30
+    allowedFunctionsPerInterface: 20
+    allowedFunctionsPerObject: 30
+    allowedFunctionsPerEnum: 20
+  LongMethod:
+    allowedLines: 100
+  CyclomaticComplexMethod:
+    allowedComplexity: 25
+
+style:
+  ReturnCount:
+    max: 8
+    excludeGuardClauses: true
+  LoopWithTooManyJumpStatements:
+    maxJumpCount: 3
