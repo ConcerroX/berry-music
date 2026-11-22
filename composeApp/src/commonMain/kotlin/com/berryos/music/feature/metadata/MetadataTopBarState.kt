@@ -1,4 +1,4 @@
-package com.berryos.music.feature.detail
+package com.berryos.music.feature.metadata
 
 /** Controls rendered by the page-owned metadata top bar. */
 data class MetadataTopBarState(

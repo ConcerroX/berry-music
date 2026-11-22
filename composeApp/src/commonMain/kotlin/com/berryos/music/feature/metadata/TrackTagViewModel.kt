@@ -1,4 +1,4 @@
-package com.berryos.music.feature.detail
+package com.berryos.music.feature.metadata
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -100,9 +100,9 @@ import com.berryos.music.feature.album.AlbumScreen
 import com.berryos.music.feature.albums.AlbumsScreen
 import com.berryos.music.feature.artist.ArtistScreen
 import com.berryos.music.feature.artists.ArtistsScreen
-import com.berryos.music.feature.detail.TrackMetadataScreen
 import com.berryos.music.feature.folder.FolderScreen
 import com.berryos.music.feature.home.HomeScreen
+import com.berryos.music.feature.metadata.TrackMetadataScreen
 import com.berryos.music.feature.playlist.PlaylistScreen
 import com.berryos.music.feature.playlists.PlaylistsScreen
 import com.berryos.music.feature.search.SearchScreen

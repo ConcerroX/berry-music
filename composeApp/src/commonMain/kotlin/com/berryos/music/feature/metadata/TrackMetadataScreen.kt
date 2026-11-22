@@ -1,6 +1,6 @@
 @file:Suppress("TooManyFunctions")
 
-package com.berryos.music.feature.detail
+package com.berryos.music.feature.metadata
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
