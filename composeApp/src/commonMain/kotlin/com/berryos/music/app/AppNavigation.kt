@@ -199,6 +199,9 @@ private fun AppNavDisplay(
         bottom = if (showMiniPlayer) barMetrics.miniPlayerHeight else 0.dp,
     )
     val predictiveBack = rememberPredictiveBackTransition()
+    // A back event that arrives while the committed gesture settles. Disabling back instead would
+    // fall through to the activity and finish it.
+    val pendingBack = remember { mutableStateOf(false) }
     val platformScrim = rememberPlatformScrimColor()
     // True while the edit page slides with the platform activity transition; both scenes use it to
     // paint the window-background strip AOSP's <extend> adds on the edge they vacate.
@@ -206,14 +209,16 @@ private fun AppNavDisplay(
     val editOnTop = remember(backStack) {
         derivedStateOf { backStack.lastOrNull() is TrackMetadataRoute }
     }
-    val editScrim = remember(predictiveBack, editOnTop, platformScrim) {
+    // Only the predictive back preview dims the page underneath; AOSP's activity open/close
+    // animations leave the covered window at full brightness.
+    val editScrim = remember(predictiveBack, platformScrim) {
         derivedStateOf {
             when {
                 // A committed gesture fades the scrim out over the platform's post-commit phase.
                 predictiveBack.settling ->
                     platformScrim.copy(alpha = platformScrim.alpha * (1f - predictiveBack.settleProgress))
 
-                editOnTop.value -> platformScrim
+                predictiveBack.active -> platformScrim
 
                 else -> Color.Transparent
             }
@@ -369,6 +374,9 @@ private fun AppNavDisplay(
                 if (state is NavigationEventTransitionState.InProgress) {
                     if (editOnTop.value) {
                         predictiveBack.onGestureProgress(state.latestEvent)
+                    } else {
+                        // A new gesture supersedes a back queued during the edit settle.
+                        pendingBack.value = false
                     }
                 } else {
                     predictiveBack.onIdle()
@@ -388,20 +396,31 @@ private fun AppNavDisplay(
         )
     }
     // Block back while a return animates, but never while a predictive gesture is in progress:
-    // flipping isBackEnabled mid-gesture makes the system cancel it.
+    // flipping isBackEnabled mid-gesture makes the system cancel it. The edit settle is not a
+    // blocking transition; its back events are queued in pendingBack instead.
     val transformBlocksBack = controller.transitionRunning &&
         !controller.transformEntering &&
         navigationEventState.transitionState !is NavigationEventTransitionState.InProgress
-    val backBlockedByTransition = transformBlocksBack || predictiveBack.settling
+    val backBlockedByTransition = transformBlocksBack
+    LaunchedEffect(predictiveBack.settling) {
+        if (!predictiveBack.settling && pendingBack.value) {
+            pendingBack.value = false
+            actions.back()
+        }
+    }
     NavigationEventHandler(
         state = navigationEventState,
         isBackEnabled = sceneState.currentScene.previousEntries.isNotEmpty() && !backBlockedByTransition,
         onBackCancelled = controller::notifyGestureCancelled,
         onBackCompleted = {
-            // Must happen before the pop: the pop transition spec reads whether the gesture is
-            // being settled so it can keep the outgoing scene composed.
-            predictiveBack.commit()
-            actions.back()
+            if (predictiveBack.settling) {
+                pendingBack.value = true
+            } else {
+                // Must happen before the pop: the pop transition spec reads whether the gesture is
+                // being settled so it can keep the outgoing scene composed.
+                predictiveBack.commit()
+                actions.back()
+            }
         },
     )
     Box(
