@@ -4,4 +4,5 @@ import org.koin.dsl.module
 
 val databaseModule = module {
     single { createBerryDatabase(get()) }
+    single { get<BerryDatabase>().localLibraryDao() }
 }

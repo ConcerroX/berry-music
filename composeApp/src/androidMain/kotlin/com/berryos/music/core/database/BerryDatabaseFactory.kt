@@ -13,5 +13,6 @@ fun createBerryDatabase(context: Context): BerryDatabase {
         name = appContext.getDatabasePath(DATABASE_NAME).absolutePath,
     )
         .setDriver(BundledSQLiteDriver())
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 }
