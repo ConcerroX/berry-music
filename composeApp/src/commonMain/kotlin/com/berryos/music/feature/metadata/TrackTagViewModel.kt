@@ -22,6 +22,8 @@ sealed interface TrackTagUiState {
     data object NotLocal : TrackTagUiState
     data class Ready(
         val inspection: TrackTagInspection,
+        val originalArtists: List<String> = inspection.artists,
+        val artists: List<String> = originalArtists,
         val originalFilename: String = inspection.filename.orEmpty(),
         val filename: String = originalFilename,
         val originalEdits: Map<TrackTagField, String> = inspection.initialEdits(),
@@ -30,7 +32,7 @@ sealed interface TrackTagUiState {
         val error: String? = null,
     ) : TrackTagUiState {
         val dirty: Boolean
-            get() = edits != originalEdits || filename != originalFilename
+            get() = edits != originalEdits || artists != originalArtists || filename != originalFilename
     }
 
     data class Error(val message: String) : TrackTagUiState
@@ -40,7 +42,7 @@ private fun TrackTagInspection.initialEdits(): Map<TrackTagField, String> = buil
     val grouped = mutableMapOf<TrackTagField, MutableList<String>>()
     this@initialEdits.entries.forEach { entry ->
         val field = entry.field
-        if (field != null && entry.picture == null) {
+        if (field != null && field != TrackTagField.ARTIST && entry.picture == null) {
             grouped.getOrPut(field) { mutableListOf() } += entry.value.orEmpty()
         }
     }
@@ -86,6 +88,12 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
         _state.value = current.copy(edits = current.edits + (field to value), error = null)
     }
 
+    fun editArtists(values: List<String>) {
+        val current = _state.value as? TrackTagUiState.Ready ?: return
+        if (current.artists == values) return
+        _state.value = current.copy(artists = values, error = null)
+    }
+
     fun editFilename(value: String) {
         val current = _state.value as? TrackTagUiState.Ready ?: return
         if (current.filename == value) return
@@ -99,7 +107,9 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
         _state.value = current.copy(saving = true, error = null)
         viewModelScope.launch {
             _state.value = runCatching {
-                if (current.edits != current.originalEdits) repository.save(track, current.edits)
+                if (current.edits != current.originalEdits || current.artists != current.originalArtists) {
+                    repository.save(track, current.edits, current.artists)
+                }
                 if (current.filename != current.originalFilename) {
                     repository.rename(track, current.filename)
                 }

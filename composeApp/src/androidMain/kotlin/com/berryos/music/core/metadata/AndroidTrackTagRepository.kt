@@ -37,16 +37,18 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
         } ?: throw IllegalStateException("Unable to open the audio file")
     }
 
-    override suspend fun save(track: Track, edits: Map<TrackTagField, String>): Unit = withContext(Dispatchers.IO) {
-        val mediaId = track.id.toLongOrNull()
-            ?: throw IllegalArgumentException("Track id is not a MediaStore id")
-        resolver.openFileDescriptor(audioUri(mediaId), "rw")?.use { descriptor ->
-            val source = FileDescriptorSource(descriptor)
-            val audio = AudioFile.read(source, includeArtworks = false)
-                ?: throw IllegalStateException("Unable to read the audio file")
-            audio.applyEdits(edits)
-            audio.save(source)
-        } ?: throw IllegalStateException("Unable to open the audio file")
+    override suspend fun save(track: Track, edits: Map<TrackTagField, String>, artists: List<String>?) {
+        withContext(Dispatchers.IO) {
+            val mediaId = track.id.toLongOrNull()
+                ?: throw IllegalArgumentException("Track id is not a MediaStore id")
+            resolver.openFileDescriptor(audioUri(mediaId), "rw")?.use { descriptor ->
+                val source = FileDescriptorSource(descriptor)
+                val audio = AudioFile.read(source, includeArtworks = false)
+                    ?: error("Unable to read the audio file")
+                audio.applyEdits(edits, artists)
+                audio.save(source)
+            } ?: error("Unable to open the audio file")
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -109,6 +111,7 @@ private fun AudioFile.toInspection(): TrackTagInspection {
             .mergedByDate(recordingDate)
             .filledRating(extensions.rating?.toString())
             .prioritizedByField(),
+        artists = artists.filter(String::isNotBlank),
     )
 }
 
