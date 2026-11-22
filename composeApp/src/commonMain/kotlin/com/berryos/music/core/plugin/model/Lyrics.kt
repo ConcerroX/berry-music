@@ -5,14 +5,6 @@ import kotlinx.serialization.Serializable
 // Ported from Lyrico (Apache License 2.0): com.lonx.lyrico.data.model.lyrics.Lyrics
 
 @Serializable
-data class LyricsData(
-    val original: String?,
-    val translated: String? = null,
-    val type: String = "lrc",
-    val romanization: String? = null,
-)
-
-@Serializable
 data class LyricsWord(
     val start: Long,
     val end: Long,
@@ -21,11 +13,7 @@ data class LyricsWord(
 )
 
 @Serializable
-data class LyricsRubySyllable(
-    val start: Long?,
-    val end: Long?,
-    val text: String,
-)
+data class LyricsRubySyllable(val start: Long?, val end: Long?, val text: String)
 
 @Serializable
 data class LyricsLine(
@@ -39,11 +27,7 @@ data class LyricsLine(
  * Structured payload performer, mapped to TTML head `<ttm:agent>`.
  */
 @Serializable
-data class LyricsAgentEntry(
-    val id: String,
-    val type: String? = null,
-    val name: String? = null,
-)
+data class LyricsAgentEntry(val id: String, val type: String? = null, val name: String? = null)
 
 /**
  * Structured payload head metadata element node, mapped to a TTML `<head>` element.
@@ -80,10 +64,7 @@ data class LyricsResult(
 )
 
 @Serializable
-data class LyricsCandidateResult(
-    val song: SongSearchResult,
-    val lyrics: LyricsResult,
-)
+data class LyricsCandidateResult(val song: SongSearchResult, val lyrics: LyricsResult)
 
 @Serializable
 enum class LyricsPayloadType {
@@ -95,10 +76,4 @@ enum class LyricsPayloadType {
     RAW_MULTI_PERSON_ENHANCED_LRC,
 }
 
-fun LyricsPayloadType.isRaw(): Boolean {
-    return this != LyricsPayloadType.STRUCTURED
-}
-
-fun List<LyricsLine>.isWordByWord(): Boolean {
-    return any { it.words.size > 1 }
-}
+fun List<LyricsLine>.isWordByWord(): Boolean = any { it.words.size > 1 }

@@ -1,4 +1,4 @@
-package com.berryos.music.core.plugin.model
+package com.berryos.music.core.plugin.contract
 
 import kotlinx.serialization.Serializable
 

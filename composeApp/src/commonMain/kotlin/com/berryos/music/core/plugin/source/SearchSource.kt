@@ -1,4 +1,12 @@
-package com.berryos.music.core.plugin.model
+package com.berryos.music.core.plugin.source
+
+import com.berryos.music.core.plugin.model.LyricsCandidateResult
+import com.berryos.music.core.plugin.model.LyricsResult
+import com.berryos.music.core.plugin.model.PluginCapability
+import com.berryos.music.core.plugin.model.PluginConfigField
+import com.berryos.music.core.plugin.model.SongSearchResult
+import com.berryos.music.core.plugin.model.SourceRuntimeConfig
+import kotlinx.coroutines.CancellationException
 
 // Ported from Lyrico (Apache License 2.0): com.lonx.lyrico.data.model.lyrics.SearchSource
 interface SearchSource {
@@ -45,35 +53,22 @@ interface SearchSource {
         song: SongSearchResult,
         page: Int = 1,
         pageSize: Int = 20,
-    ): List<LyricsCandidateResult> =
-        getLyrics(song)?.let { lyrics ->
-            listOf(LyricsCandidateResult(song = song, lyrics = lyrics))
-        }.orEmpty()
+    ): List<LyricsCandidateResult> = getLyrics(song)?.let { lyrics ->
+        listOf(LyricsCandidateResult(song = song, lyrics = lyrics))
+    }.orEmpty()
 
-    suspend fun searchCovers(
-        keyword: String,
-        page: Int = 1,
-        pageSize: Int = 5,
-    ): List<SongSearchResult>
+    suspend fun searchCovers(keyword: String, page: Int = 1, pageSize: Int = 5): List<SongSearchResult>
 
-    suspend fun searchCovers(
-        song: SongSearchResult,
-        page: Int = 1,
-        pageSize: Int = 5,
-    ): List<SongSearchResult> = searchCovers(
-        keyword = listOf(song.title, song.artist).filter { it.isNotBlank() }.joinToString(" "),
-        page = page,
-        pageSize = pageSize,
-    )
-}
-
-fun SearchSource.isEnabledFor(sourceType: PluginSourceType): Boolean = when (sourceType) {
-    PluginSourceType.METADATA -> metadataEnabled
-    PluginSourceType.LYRICS -> lyricsEnabled
-    PluginSourceType.COVER -> coverEnabled
+    suspend fun searchCovers(song: SongSearchResult, page: Int = 1, pageSize: Int = 5): List<SongSearchResult> =
+        searchCovers(
+            keyword = listOf(song.title, song.artist).filter { it.isNotBlank() }.joinToString(" "),
+            page = page,
+            pageSize = pageSize,
+        )
 }
 
 /** Hold each selected source version until a multi-source operation completes. */
+@Suppress("TooGenericExceptionCaught")
 suspend fun <T> List<SearchSource>.withSessions(
     onUnavailable: (suspend (SearchSource, Exception) -> Unit)? = null,
     block: suspend (List<SearchSource>) -> T,
@@ -95,7 +90,7 @@ suspend fun <T> List<SearchSource>.withSessions(
                 }
             }
         } catch (error: Exception) {
-            if (entered || error is kotlinx.coroutines.CancellationException || onUnavailable == null) {
+            if (entered || error is CancellationException || onUnavailable == null) {
                 throw error
             }
             onUnavailable(source, error)

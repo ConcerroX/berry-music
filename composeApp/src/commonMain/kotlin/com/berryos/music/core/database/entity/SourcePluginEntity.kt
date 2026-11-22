@@ -19,7 +19,6 @@ data class SourcePluginEntity(
     val description: String,
     val pluginDir: String,
     val entryFile: String,
-    val includeDirsJson: String,
     val capabilitiesJson: String,
     val iconPath: String?,
     val customName: String?,

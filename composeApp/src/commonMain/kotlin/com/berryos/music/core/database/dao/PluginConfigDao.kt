@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.berryos.music.core.database.entity.PluginConfigEntity
 
 @Dao
@@ -17,4 +18,10 @@ interface PluginConfigDao {
 
     @Query("DELETE FROM plugin_config WHERE pluginId = :pluginId")
     suspend fun deleteForPlugin(pluginId: String)
+
+    @Transaction
+    suspend fun replaceForPlugin(pluginId: String, values: List<PluginConfigEntity>) {
+        deleteForPlugin(pluginId)
+        upsertAll(values)
+    }
 }

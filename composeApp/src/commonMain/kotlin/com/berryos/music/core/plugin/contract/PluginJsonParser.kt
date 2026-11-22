@@ -23,43 +23,34 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 
 // Ported from Lyrico (Apache License 2.0): com.lonx.lyrico.plugin.source.PluginJsonParser
-class PluginJsonParser(
-    private val json: Json
-) {
-    fun parseSongResults(
-        rawJson: String,
-        pluginId: String,
-        pluginName: String
-    ): List<SongSearchResult> {
-        return parseSongResultItems(
+class PluginJsonParser(private val json: Json) {
+    fun parseSongResults(rawJson: String, pluginId: String, pluginName: String): List<SongSearchResult> =
+        parseSongResultItems(
             rawJson = rawJson,
             pluginId = pluginId,
             pluginName = pluginName,
-            requireId = true
+            requireId = true,
         )
-    }
 
     fun parseCoverResults(
         rawJson: String,
         pluginId: String,
         pluginName: String,
-        enforceApi4Contract: Boolean = false
-    ): List<SongSearchResult> {
-        return parseSongResultItems(
-            rawJson = rawJson,
-            pluginId = pluginId,
-            pluginName = pluginName,
-            requireId = false,
-            enforceCoverJudgmentMetadata = enforceApi4Contract
-        )
-    }
+        enforceApi4Contract: Boolean = false,
+    ): List<SongSearchResult> = parseSongResultItems(
+        rawJson = rawJson,
+        pluginId = pluginId,
+        pluginName = pluginName,
+        requireId = false,
+        enforceCoverJudgmentMetadata = enforceApi4Contract,
+    )
 
     private fun parseSongResultItems(
         rawJson: String,
         pluginId: String,
         pluginName: String,
         requireId: Boolean,
-        enforceCoverJudgmentMetadata: Boolean = false
+        enforceCoverJudgmentMetadata: Boolean = false,
     ): List<SongSearchResult> {
         val root = json.parseToJsonElement(rawJson)
         val items = when (root) {
@@ -72,8 +63,12 @@ class PluginJsonParser(
             val obj = element as? JsonObject ?: return@mapIndexedNotNull null
             val coverUrl = obj.string("picUrl", "coverUrl", "cover_url", "artworkUrl").orEmpty()
             val id = obj.string("id", "songId", "trackId")
-                ?: if (requireId) return@mapIndexedNotNull null else coverUrl.ifBlank {
-                    "$pluginId:cover:$index"
+                ?: if (requireId) {
+                    return@mapIndexedNotNull null
+                } else {
+                    coverUrl.ifBlank {
+                        "$pluginId:cover:$index"
+                    }
                 }
             val title = obj.string("title", "name", "songName").orEmpty()
             val artist = obj.string("artist", "artists", "singer").orEmpty()
@@ -84,7 +79,7 @@ class PluginJsonParser(
                     artist,
                     album,
                     date,
-                    coverUrl
+                    coverUrl,
                 ).any { it.isBlank() }
             ) {
                 return@mapIndexedNotNull null
@@ -105,7 +100,7 @@ class PluginJsonParser(
                 trackNumber = obj.string("trackNumber", "trackerNumber", "track_number").orEmpty(),
                 picUrl = coverUrl,
                 fields = fields,
-                internal = internal
+                internal = internal,
             )
         }
     }
@@ -115,15 +110,17 @@ class PluginJsonParser(
         pluginId: String,
         pluginName: String,
         fallbackSong: SongSearchResult,
-        enforceApi4Contract: Boolean = false
+        enforceApi4Contract: Boolean = false,
     ): List<LyricsCandidateResult> {
         val root = json.parseToJsonElement(rawJson)
         if (root is JsonNull) return emptyList()
 
         val candidateElements = when (root) {
             is JsonArray -> root.toList()
+
             is JsonObject -> root.array("items", "results", "candidates")?.toList()
                 ?: listOf(root)
+
             else -> listOf(root)
         }
 
@@ -135,7 +132,7 @@ class PluginJsonParser(
                     tags["ti"],
                     tags["ar"],
                     tags["al"],
-                    tags["date"]
+                    tags["date"],
                 )
                 if (judgmentFields.any { it.isNullOrBlank() }) {
                     return@mapIndexedNotNull null
@@ -161,9 +158,9 @@ class PluginJsonParser(
                     trackNumber = fallbackSong.trackNumber,
                     picUrl = fallbackSong.picUrl,
                     fields = fallbackSong.fields,
-                    internal = fallbackSong.internal
+                    internal = fallbackSong.internal,
                 ),
-                lyrics = lyrics
+                lyrics = lyrics,
             )
         }
     }
@@ -192,7 +189,7 @@ class PluginJsonParser(
             "plain_lrc",
             "lrc",
             "originalLrc",
-            "original_lrc"
+            "original_lrc",
         ).orEmpty()
 
         val rawOriginal = obj.primitiveString("original").orEmpty()
@@ -201,7 +198,7 @@ class PluginJsonParser(
         val ttml = obj.primitiveString("rawTtml", "raw_ttml").orEmpty()
         val multiPerson = obj.primitiveString(
             "rawMultiPersonEnhancedLrc",
-            "raw_multi_person_enhanced_lrc"
+            "raw_multi_person_enhanced_lrc",
         ).orEmpty()
 
         if (payloadType != LyricsPayloadType.STRUCTURED) {
@@ -213,7 +210,7 @@ class PluginJsonParser(
                 rawVerbatim = verbatim,
                 rawEnhanced = enhanced,
                 rawTtml = ttml,
-                rawMultiPerson = multiPerson
+                rawMultiPerson = multiPerson,
             )
         }
 
@@ -222,7 +219,7 @@ class PluginJsonParser(
         val translatedLines = obj.array(
             "translated",
             "translation",
-            "translations"
+            "translations",
         ).parseCompactTextLines().takeIf { it.isNotEmpty() }
 
         // Romanization accepts word-level entries (same shape as original) or whole-line text,
@@ -230,7 +227,7 @@ class PluginJsonParser(
         val romanizationLines = obj.array(
             "romanization",
             "romanized",
-            "roma"
+            "roma",
         ).parseCompactWordLines().takeIf { it.isNotEmpty() }
 
         // Structured extension: performers (written to TTML head <ttm:agent>); empty for older plugins.
@@ -255,7 +252,7 @@ class PluginJsonParser(
             return null
         }
 
-        val isWordByWord =  originalLines.isWordByWord()
+        val isWordByWord = originalLines.isWordByWord()
 
         return LyricsResult(
             tags = tags,
@@ -270,21 +267,19 @@ class PluginJsonParser(
             language = language,
             translatedLang = translatedLang,
             romanizationLang = romanizationLang,
-            bodyDur = bodyDur
+            bodyDur = bodyDur,
         )
     }
 
-    private fun String.toRawLyricsResult(): LyricsResult {
-        return LyricsResult(
-            tags = emptyMap(),
-            original = emptyList(),
-            translated = null,
-            romanization = null,
-            payloadType = LyricsPayloadType.RAW_PLAIN_LRC,
-            isWordByWord = false,
-            rawPlainLrc = this
-        )
-    }
+    private fun String.toRawLyricsResult(): LyricsResult = LyricsResult(
+        tags = emptyMap(),
+        original = emptyList(),
+        translated = null,
+        romanization = null,
+        payloadType = LyricsPayloadType.RAW_PLAIN_LRC,
+        isWordByWord = false,
+        rawPlainLrc = this,
+    )
 }
 
 private fun JsonObject.toRawLyricsResult(
@@ -295,7 +290,7 @@ private fun JsonObject.toRawLyricsResult(
     rawVerbatim: String,
     rawEnhanced: String,
     rawTtml: String,
-    rawMultiPerson: String
+    rawMultiPerson: String,
 ): LyricsResult? {
     val plain = rawPlain.ifBlank { rawOriginal }
     val hasDeclaredRaw = when (type) {
@@ -320,25 +315,29 @@ private fun JsonObject.toRawLyricsResult(
         rawVerbatimLrc = rawVerbatim,
         rawEnhancedLrc = rawEnhanced,
         rawTtml = rawTtml,
-        rawMultiPersonEnhancedLrc = rawMultiPerson
+        rawMultiPersonEnhancedLrc = rawMultiPerson,
     )
 }
 
-private fun String.toLyricsPayloadType(): LyricsPayloadType? {
-    return when (trim()) {
-        "structured", "STRUCTURED" -> LyricsPayloadType.STRUCTURED
-        "rawPlainLrc", "raw_plain_lrc", "RAW_PLAIN_LRC", "plainLrc", "plain_lrc", "lrc" ->
-            LyricsPayloadType.RAW_PLAIN_LRC
-        "rawVerbatimLrc", "raw_verbatim_lrc", "RAW_VERBATIM_LRC" ->
-            LyricsPayloadType.RAW_VERBATIM_LRC
-        "rawEnhancedLrc", "raw_enhanced_lrc", "RAW_ENHANCED_LRC" ->
-            LyricsPayloadType.RAW_ENHANCED_LRC
-        "rawTtml", "raw_ttml", "RAW_TTML", "ttml" ->
-            LyricsPayloadType.RAW_TTML
-        "rawMultiPersonEnhancedLrc", "raw_multi_person_enhanced_lrc", "RAW_MULTI_PERSON_ENHANCED_LRC" ->
-            LyricsPayloadType.RAW_MULTI_PERSON_ENHANCED_LRC
-        else -> null
-    }
+private fun String.toLyricsPayloadType(): LyricsPayloadType? = when (trim()) {
+    "structured", "STRUCTURED" -> LyricsPayloadType.STRUCTURED
+
+    "rawPlainLrc", "raw_plain_lrc", "RAW_PLAIN_LRC", "plainLrc", "plain_lrc", "lrc" ->
+        LyricsPayloadType.RAW_PLAIN_LRC
+
+    "rawVerbatimLrc", "raw_verbatim_lrc", "RAW_VERBATIM_LRC" ->
+        LyricsPayloadType.RAW_VERBATIM_LRC
+
+    "rawEnhancedLrc", "raw_enhanced_lrc", "RAW_ENHANCED_LRC" ->
+        LyricsPayloadType.RAW_ENHANCED_LRC
+
+    "rawTtml", "raw_ttml", "RAW_TTML", "ttml" ->
+        LyricsPayloadType.RAW_TTML
+
+    "rawMultiPersonEnhancedLrc", "raw_multi_person_enhanced_lrc", "RAW_MULTI_PERSON_ENHANCED_LRC" ->
+        LyricsPayloadType.RAW_MULTI_PERSON_ENHANCED_LRC
+
+    else -> null
 }
 
 /**
@@ -393,7 +392,7 @@ private fun JsonArray?.parseCompactWordLines(): List<LyricsLine> {
                         start = wordStart,
                         end = wordEnd,
                         text = wordText,
-                        ruby = word.arrayAt(3).parseRubySyllables()
+                        ruby = word.arrayAt(3).parseRubySyllables(),
                     )
                 }
             }
@@ -403,8 +402,8 @@ private fun JsonArray?.parseCompactWordLines(): List<LyricsLine> {
                     LyricsWord(
                         start = start,
                         end = end,
-                        text = text
-                    )
+                        text = text,
+                    ),
                 )
             }
 
@@ -417,7 +416,7 @@ private fun JsonArray?.parseCompactWordLines(): List<LyricsLine> {
             start = start,
             end = end,
             words = words,
-            extensions = extensions
+            extensions = extensions,
         )
     }.orEmpty()
 }
@@ -433,7 +432,7 @@ private fun JsonArray?.parseRubySyllables(): List<LyricsRubySyllable> {
         LyricsRubySyllable(
             start = syllable.longAt(0),
             end = syllable.longAt(1),
-            text = text
+            text = text,
         )
     }.orEmpty()
 }
@@ -461,30 +460,22 @@ private fun JsonArray?.parseCompactTextLines(): List<LyricsLine> {
                 LyricsWord(
                     start = start,
                     end = end,
-                    text = text
-                )
-            )
+                    text = text,
+                ),
+            ),
         )
     }.orEmpty()
 }
 
-private fun JsonArray.longAt(index: Int): Long? {
-    return (getOrNull(index) as? JsonPrimitive)?.let { primitive ->
-        primitive.longOrNull ?: primitive.contentOrNull?.toLongOrNull()
-    }
+private fun JsonArray.longAt(index: Int): Long? = (getOrNull(index) as? JsonPrimitive)?.let { primitive ->
+    primitive.longOrNull ?: primitive.contentOrNull?.toLongOrNull()
 }
 
-private fun JsonArray.stringAt(index: Int): String? {
-    return (getOrNull(index) as? JsonPrimitive)?.contentOrNull
-}
+private fun JsonArray.stringAt(index: Int): String? = (getOrNull(index) as? JsonPrimitive)?.contentOrNull
 
-private fun JsonArray.arrayAt(index: Int): JsonArray? {
-    return getOrNull(index) as? JsonArray
-}
+private fun JsonArray.arrayAt(index: Int): JsonArray? = getOrNull(index) as? JsonArray
 
-private fun JsonArray.objectAt(index: Int): JsonObject? {
-    return getOrNull(index) as? JsonObject
-}
+private fun JsonArray.objectAt(index: Int): JsonObject? = getOrNull(index) as? JsonObject
 
 /**
  * Compact agents format (array of objects):
@@ -504,7 +495,7 @@ private fun JsonArray?.parseAgentEntries(): List<LyricsAgentEntry> {
         LyricsAgentEntry(
             id = id,
             type = obj.primitiveString("type"),
-            name = obj.primitiveString("name")
+            name = obj.primitiveString("name"),
         )
     }.orEmpty()
 }
@@ -525,6 +516,7 @@ private const val META_NAME_SONGWRITERS = "songwriters"
 private const val META_NAME_SONGWRITER = "songwriter"
 
 // Official keys that already have dedicated fields (translated/romanization/agents) and must not repeat.
+private val KNOWN_XML_PREFIXES = setOf("ttm", "itunes", "xml")
 private val META_NAMES_DUPLICATED = setOf("translations", "transliterations", "ttm:agent")
 
 private fun JsonArray?.parseMetadataElements(): List<LyricsMetadataElement> {
@@ -557,9 +549,7 @@ private fun JsonObject.parseMetadataElement(): LyricsMetadataElement? {
     val namespace = primitiveString("namespace")
     // A prefixed name outside ttm/itunes/xml needs a namespace URI, otherwise the output XML is invalid.
     val prefix = name.substringBefore(':', "")
-    if (prefix.isNotEmpty() && prefix != "ttm" && prefix != "itunes" && prefix != "xml" &&
-        namespace.isNullOrBlank()
-    ) {
+    if (prefix.isNotEmpty() && prefix !in KNOWN_XML_PREFIXES && namespace.isNullOrBlank()) {
         return null
     }
     val attributes = this["attributes"] as? JsonObject
@@ -570,16 +560,14 @@ private fun JsonObject.parseMetadataElement(): LyricsMetadataElement? {
         attributes = attributes.parseStringMap(),
         text = primitiveString("text"),
         // Children are parsed without validation so unofficial trees pass through intact.
-        children = children.parseMetadataTree()
+        children = children.parseMetadataTree(),
     )
 }
 
 /** Plain parse without the three-way rule; used for children so the passed-through tree stays complete. */
-private fun JsonArray?.parseMetadataTree(): List<LyricsMetadataElement> {
-    return this?.mapNotNull { element ->
-        (element as? JsonObject)?.parseMetadataElement()
-    }.orEmpty()
-}
+private fun JsonArray?.parseMetadataTree(): List<LyricsMetadataElement> = this?.mapNotNull { element ->
+    (element as? JsonObject)?.parseMetadataElement()
+}.orEmpty()
 
 /** JsonObject -> Map<String, String>, keeping string values (JsonPrimitive) only. */
 private fun JsonObject?.parseStringMap(): Map<String, String> {
@@ -608,10 +596,8 @@ private fun JsonObject.string(vararg keys: String): String? {
     }
 }
 
-private fun JsonObject.primitiveString(vararg keys: String): String? {
-    return keys.firstNotNullOfOrNull { key ->
-        (this[key] as? JsonPrimitive)?.contentOrNull
-    }
+private fun JsonObject.primitiveString(vararg keys: String): String? = keys.firstNotNullOfOrNull { key ->
+    (this[key] as? JsonPrimitive)?.contentOrNull
 }
 
 private fun JsonObject.long(vararg keys: String): Long? {
@@ -624,14 +610,10 @@ private fun JsonObject.long(vararg keys: String): Long? {
     }
 }
 
-private fun JsonObject.boolean(key: String): Boolean? {
-    return (this[key] as? JsonPrimitive)?.booleanOrNull
-}
+private fun JsonObject.boolean(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
 
-private fun JsonObject.array(vararg keys: String): JsonArray? {
-    return keys.firstNotNullOfOrNull { key ->
-        this[key] as? JsonArray
-    }
+private fun JsonObject.array(vararg keys: String): JsonArray? = keys.firstNotNullOfOrNull { key ->
+    this[key] as? JsonArray
 }
 
 private fun JsonObject.stringMap(vararg keys: String): Map<String, String>? {
@@ -647,10 +629,7 @@ private fun JsonObject.stringMap(vararg keys: String): Map<String, String>? {
     }
 }
 
-private inline fun <K, V, R : Any> Map<K, V>.mapValuesNotNull(
-    transform: (Map.Entry<K, V>) -> R?
-): Map<K, R> {
-    return mapNotNull { entry ->
+private inline fun <K, V, R : Any> Map<K, V>.mapValuesNotNull(transform: (Map.Entry<K, V>) -> R?): Map<K, R> =
+    mapNotNull { entry ->
         transform(entry)?.let { entry.key to it }
     }.toMap()
-}

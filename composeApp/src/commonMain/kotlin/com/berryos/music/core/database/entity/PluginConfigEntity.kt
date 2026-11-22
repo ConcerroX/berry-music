@@ -17,8 +17,4 @@ import androidx.room.Index
     ],
     indices = [Index(value = ["pluginId"])],
 )
-data class PluginConfigEntity(
-    val pluginId: String,
-    val key: String,
-    val value: String,
-)
+data class PluginConfigEntity(val pluginId: String, val key: String, val value: String)
