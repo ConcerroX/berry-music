@@ -1,0 +1,44 @@
+package com.berryos.music.core.plugin.model
+
+import kotlinx.serialization.Serializable
+
+// Ported from Lyrico (Apache License 2.0): com.lonx.lyrico.plugin.source.PluginScriptModels
+@Serializable
+data class PluginSearchSongsRequest(
+    val keyword: String,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+    val separator: String = "/",
+    val config: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class PluginSearchCoversRequest(
+    val keyword: String,
+    val song: PluginSongRequest? = null,
+    val page: Int = 1,
+    val pageSize: Int = 5,
+    val config: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class PluginGetLyricsRequest(
+    val song: PluginSongRequest,
+    val page: Int = 1,
+    val pageSize: Int = 20,
+    val config: Map<String, String> = emptyMap(),
+)
+
+@Serializable
+data class PluginSongRequest(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val date: String = "",
+    val duration: Long,
+    val sourceId: String,
+    val pluginId: String,
+    val fields: Map<String, String> = emptyMap(),
+    val internal: Map<String, String> = emptyMap(),
+)

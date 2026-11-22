@@ -30,6 +30,7 @@ rootProject.name = "berry-music"
 
 include(":composeApp")
 include(":androidApp")
+include(":quickjs")
 
 includeBuild("../../../Ripple Design/rui-compose") {
     dependencySubstitution {

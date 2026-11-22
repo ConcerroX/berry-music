@@ -10,10 +10,15 @@ kotlinxCoroutines = "1.10.2"
 ktor = "3.4.0"
 coil = "3.6.3"
 datastore = "1.2.1"
+room = "2.8.5"
+sqlite = "2.7.1"
+ksp = "2.3.14"
 koin = "4.2.2"
 logto = "3.0.0"
 media3 = "1.6.1"
 androidx-activityCompose = "1.13.0"
+androidx-testRunner = "1.7.0"
+androidx-testExtJunit = "1.3.0"
 androidx-palette = "1.0.0"
 android-compileSdk = "37"
 android-minSdk = "26"
@@ -21,6 +26,8 @@ android-targetSdk = "36"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidx-testRunner" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-testExtJunit" }
 detekt-rules-ktlint-wrapper = { module = "dev.detekt:detekt-rules-ktlint-wrapper", version.ref = "detekt" }
 navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "navigation3" }
 lifecycle-viewmodel-navigation3 = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycleNavigation3" }
@@ -35,6 +42,9 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
 logto-android = { module = "io.logto.sdk:android", version.ref = "logto" }
@@ -45,9 +55,12 @@ compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", v
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+androidx-room = { id = "androidx.room", version.ref = "room" }

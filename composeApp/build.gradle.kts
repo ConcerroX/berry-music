@@ -7,6 +7,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.detekt)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -42,6 +44,8 @@ kotlin {
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
             implementation(libs.koin.compose.viewmodel)
+            implementation(libs.androidx.room.runtime)
+            implementation(libs.androidx.sqlite.bundled)
             implementation("art.rippledesign:compose-rui")
             implementation("art.rippledesign:compose-rui-navigation3")
         }
@@ -80,7 +84,12 @@ detekt {
 }
 
 dependencies {
+    add("kspAndroid", libs.androidx.room.compiler)
     detektPlugins(libs.detekt.rules.ktlint.wrapper)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 compose.resources {
