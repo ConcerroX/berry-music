@@ -65,6 +65,8 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.logto.android)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.okhttp)
+            implementation(project(":quickjs"))
         }
     }
 }
