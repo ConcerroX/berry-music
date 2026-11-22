@@ -2,18 +2,23 @@
 
 package com.berryos.music.feature.metadata
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -29,9 +34,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import art.rippledesign.compose.rui.RChipInput
 import art.rippledesign.compose.rui.ROutlinedTextField
 import art.rippledesign.compose.rui.pager.RHorizontalPager
 import com.berryos.music.core.datastore.AppSettingsRepository
@@ -41,6 +54,7 @@ import com.berryos.music.core.metadata.TrackTagField
 import com.berryos.music.core.metadata.rememberTrackTagWritePermission
 import com.berryos.music.core.model.Track
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.default_album_art
 import com.berryos.music.resources.metadata
 import com.berryos.music.resources.metadata_field_album
 import com.berryos.music.resources.metadata_field_album_artist
@@ -65,6 +79,7 @@ import com.berryos.music.resources.metadata_only_local
 import com.berryos.music.resources.metadata_picture_type
 import com.berryos.music.resources.metadata_tag_type
 import com.berryos.music.resources.track_not_found
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -73,6 +88,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun TrackMetadataScreen(
     track: Track?,
     settings: AppSettingsRepository,
+    artistSuggestions: List<String> = emptyList(),
     startInLyrics: Boolean = false,
     topBar: @Composable (MetadataTopBarState) -> Unit,
 ) {
@@ -123,7 +139,9 @@ fun TrackMetadataScreen(
                     selectedTab = selectedTab,
                     onSelectedTabChange = { selectedTab = it },
                     showTechnicalDetails = appSettings.showTechnicalDetails,
+                    artistSuggestions = artistSuggestions,
                     onFilenameEdit = viewModel::editFilename,
+                    onArtistsChange = viewModel::editArtists,
                     onEdit = viewModel::edit,
                 )
             }
@@ -138,7 +156,9 @@ private fun TabbedContent(
     selectedTab: Int,
     onSelectedTabChange: (Int) -> Unit,
     showTechnicalDetails: Boolean,
+    artistSuggestions: List<String>,
     onFilenameEdit: (String) -> Unit,
+    onArtistsChange: (List<String>) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     LaunchedEffect(pagerState.currentPage) {
@@ -158,7 +178,9 @@ private fun TabbedContent(
             TAB_METADATA -> TagInspectionList(
                 state = state,
                 showTechnicalDetails = showTechnicalDetails,
+                artistSuggestions = artistSuggestions,
                 onFilenameEdit = onFilenameEdit,
+                onArtistsChange = onArtistsChange,
                 onEdit = onEdit,
             )
 
@@ -175,7 +197,9 @@ private fun TabbedContent(
 private fun TagInspectionList(
     state: TrackTagUiState.Ready,
     showTechnicalDetails: Boolean,
+    artistSuggestions: List<String>,
     onFilenameEdit: (String) -> Unit,
+    onArtistsChange: (List<String>) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     val inspection = state.inspection
@@ -217,8 +241,18 @@ private fun TagInspectionList(
             }
         }
         items(rows, key = { it.key() }) { row ->
-            when (row) {
-                is TagEntryRow.Single -> EntryRow(
+            val artistEntry = (row as? TagEntryRow.Single)?.entry
+                ?.takeIf { it.field == TrackTagField.ARTIST && it.picture == null }
+            when {
+                artistEntry != null -> ArtistChipField(
+                    label = entryLabel(artistEntry, showTechnicalDetails),
+                    artists = state.artists,
+                    suggestions = artistSuggestions,
+                    onArtistsChange = onArtistsChange,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
+                row is TagEntryRow.Single -> EntryRow(
                     entry = row.entry,
                     showTechnicalDetails = showTechnicalDetails,
                     editState = state,
@@ -226,8 +260,77 @@ private fun TagInspectionList(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
 
-                is TagEntryRow.Pair -> EntryPairRow(row.first, row.second, showTechnicalDetails, state, onEdit)
+                row is TagEntryRow.Pair -> EntryPairRow(row.first, row.second, showTechnicalDetails, state, onEdit)
             }
+        }
+    }
+}
+
+@Composable
+private fun ArtistChipField(
+    label: String,
+    artists: List<String>,
+    suggestions: List<String>,
+    onArtistsChange: (List<String>) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    RChipInput(
+        values = artists,
+        onValuesChange = onArtistsChange,
+        label = { Text(label) },
+        modifier = modifier,
+        chipLeadingIcon = {
+            Image(
+                painter = painterResource(Res.drawable.default_album_art),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+            )
+        },
+        suggestions = { query ->
+            val trimmed = query.trim()
+            if (trimmed.isEmpty()) {
+                emptyList()
+            } else {
+                suggestions
+                    .filter { it.contains(trimmed, ignoreCase = true) }
+                    .filterNot { candidate ->
+                        artists.any { it.equals(candidate, ignoreCase = true) }
+                    }
+                    .sortedWith(
+                        compareByDescending<String> { it.startsWith(trimmed, ignoreCase = true) }
+                            .thenBy { it.lowercase() },
+                    )
+                    .take(MAX_ARTIST_SUGGESTIONS)
+            }
+        },
+        suggestionContent = { suggestion, query ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(Res.drawable.default_album_art),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                )
+                Spacer(Modifier.width(24.dp))
+                Text(
+                    text = highlightedArtistName(suggestion, query),
+                    style = MaterialTheme.typography.body1,
+                )
+            }
+        },
+    )
+}
+
+private fun highlightedArtistName(name: String, query: String): AnnotatedString {
+    val trimmed = query.trim()
+    val start = if (trimmed.isEmpty()) -1 else name.indexOf(trimmed, ignoreCase = true)
+    return if (start < 0) {
+        AnnotatedString(name)
+    } else {
+        buildAnnotatedString {
+            append(name)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, start + trimmed.length)
         }
     }
 }
@@ -428,6 +531,7 @@ private val FIELD_LABELS = mapOf(
 )
 
 private const val FIELD_MAX_LINES = 4
+private const val MAX_ARTIST_SUGGESTIONS = 8
 private const val TAB_METADATA = 0
 private const val TAB_LYRICS = 1
 private const val TAB_COUNT = 2

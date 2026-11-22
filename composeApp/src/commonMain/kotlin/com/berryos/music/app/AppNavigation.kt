@@ -319,9 +319,17 @@ private fun AppNavDisplay(
                     LaunchedEffect(resolved) {
                         if (resolved != null) track = resolved
                     }
+                    val artistSuggestions = (libraryState as? LibraryUiState.Ready)
+                        ?.snapshot
+                        ?.artists
+                        .orEmpty()
+                        .filter { it.source == SourceKey.Local }
+                        .map { it.name }
+                        .distinct()
                     TrackMetadataScreen(
                         track,
                         settings,
+                        artistSuggestions = artistSuggestions,
                         startInLyrics = route.startInLyrics,
                         topBar = { topBarState ->
                             AppTopBar(
