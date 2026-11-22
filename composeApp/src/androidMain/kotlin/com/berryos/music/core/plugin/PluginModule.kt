@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import com.berryos.music.core.plugin.i18n.PluginLocalePreferences
 import com.berryos.music.core.plugin.install.PluginInstaller
+import com.berryos.music.core.plugin.locale.PluginLocalePreferences
 import com.berryos.music.core.plugin.registry.PluginRegistry
 import com.berryos.music.core.plugin.registry.RoomPluginRegistry
 import com.berryos.music.core.plugin.runtime.HostAppInfo

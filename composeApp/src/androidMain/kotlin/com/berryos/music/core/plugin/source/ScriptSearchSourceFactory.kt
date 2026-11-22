@@ -1,10 +1,10 @@
 package com.berryos.music.core.plugin.source
 
 import com.berryos.music.core.database.entity.SourcePluginEntity
-import com.berryos.music.core.plugin.PluginJson
-import com.berryos.music.core.plugin.i18n.PluginLocalePreferences
 import com.berryos.music.core.plugin.i18n.PluginStrings
+import com.berryos.music.core.plugin.locale.PluginLocalePreferences
 import com.berryos.music.core.plugin.model.PluginManifest
+import com.berryos.music.core.plugin.pluginJson
 import com.berryos.music.core.plugin.registry.displayName
 import com.berryos.music.quickjs.PluginJsRuntime
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,7 @@ class ScriptSearchSourceFactory(private val runtimeFactory: (SourcePluginEntity,
     suspend fun create(plugin: SourcePluginEntity): ScriptSearchSource = withContext(Dispatchers.IO) {
         val pluginDir = File(plugin.pluginDir)
         val manifestFile = File(pluginDir, MANIFEST_FILE)
-        val manifest = PluginJson.decodeFromString<PluginManifest>(manifestFile.readText())
+        val manifest = pluginJson.decodeFromString<PluginManifest>(manifestFile.readText())
         val strings = PluginStrings.load(pluginDir, manifest)
         val entryFile = File(pluginDir, plugin.entryFile.ifBlank { manifest.entry })
         val script = buildScript(pluginDir, entryFile, manifest)
@@ -64,7 +64,7 @@ class ScriptSearchSourceFactory(private val runtimeFactory: (SourcePluginEntity,
         .toList()
 
     private fun includeBootstrap(includes: List<IncludedScript>): String {
-        val includePathSetJson = PluginJson.encodeToString(includes.map { it.path }.toSet())
+        val includePathSetJson = pluginJson.encodeToString(includes.map { it.path }.toSet())
         return """
         (function() {
           var __lyricoDeclaredIncludes = $includePathSetJson;

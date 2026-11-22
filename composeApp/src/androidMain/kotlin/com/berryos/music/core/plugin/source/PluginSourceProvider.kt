@@ -2,8 +2,8 @@ package com.berryos.music.core.plugin.source
 
 import android.util.Log
 import com.berryos.music.core.database.entity.SourcePluginEntity
-import com.berryos.music.core.plugin.i18n.PluginLocalePreferences
 import com.berryos.music.core.plugin.i18n.PluginNameResolver
+import com.berryos.music.core.plugin.locale.PluginLocalePreferences
 import com.berryos.music.core.plugin.model.PluginSourceType
 import com.berryos.music.core.plugin.model.SourceRuntimeConfig
 import com.berryos.music.core.plugin.model.supportsSourceType

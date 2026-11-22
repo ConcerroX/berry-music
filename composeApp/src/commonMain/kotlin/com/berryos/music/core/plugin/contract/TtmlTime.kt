@@ -1,4 +1,4 @@
-package com.berryos.music.core.plugin.lyrics
+package com.berryos.music.core.plugin.contract
 
 // Ported from Lyrico (Apache License 2.0): com.lonx.lyrico.utils.lyrics.document.TtmlTime
 internal object TtmlTime {

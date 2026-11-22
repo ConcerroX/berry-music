@@ -1,6 +1,6 @@
-package com.berryos.music.core.plugin.runtime
+package com.berryos.music.core.plugin.contract
 
-object HostApiRegistry {
+object HostApiVersions {
     const val MIN_PLUGIN_PROTOCOL_VERSION = 1
     const val PLUGIN_PROTOCOL_VERSION = 5
     const val MIN_PLATFORM_API_VERSION = 1

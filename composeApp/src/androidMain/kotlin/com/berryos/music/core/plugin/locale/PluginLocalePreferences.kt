@@ -1,9 +1,10 @@
-package com.berryos.music.core.plugin.i18n
+package com.berryos.music.core.plugin.locale
 
 import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.res.Configuration
 import android.icu.util.ULocale
+import com.berryos.music.core.plugin.i18n.PluginStrings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 

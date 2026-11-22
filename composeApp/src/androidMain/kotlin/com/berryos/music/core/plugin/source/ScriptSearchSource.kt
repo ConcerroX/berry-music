@@ -2,7 +2,6 @@ package com.berryos.music.core.plugin.source
 
 import android.util.Log
 import com.berryos.music.core.database.entity.SourcePluginEntity
-import com.berryos.music.core.plugin.PluginJson
 import com.berryos.music.core.plugin.contract.PluginGetLyricsRequest
 import com.berryos.music.core.plugin.contract.PluginJsonParser
 import com.berryos.music.core.plugin.contract.PluginSearchCoversRequest
@@ -16,6 +15,7 @@ import com.berryos.music.core.plugin.model.PluginManifest
 import com.berryos.music.core.plugin.model.SongSearchResult
 import com.berryos.music.core.plugin.model.SourceRuntimeConfig
 import com.berryos.music.core.plugin.model.normalizedPluginCapabilities
+import com.berryos.music.core.plugin.pluginJson
 import com.berryos.music.quickjs.PluginJsRuntime
 import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -62,7 +62,7 @@ class ScriptSearchSource(
             RuntimeExecutionContext(executor, executor.asCoroutineDispatcher()).also { executionContext = it }
         }
     }
-    private val parser = PluginJsonParser(PluginJson)
+    private val parser = PluginJsonParser(pluginJson)
 
     @Volatile private var config = SourceRuntimeConfig()
     private var runtimeInstance: PluginJsRuntime? = null
@@ -94,7 +94,7 @@ class ScriptSearchSource(
                 separator = separator,
                 config = config.values,
             )
-            val raw = callRuntime(FUNCTION_SEARCH_SONGS, PluginJson.encodeToString(request))
+            val raw = callRuntime(FUNCTION_SEARCH_SONGS, pluginJson.encodeToString(request))
             val results = parser.parseSongResults(
                 rawJson = raw,
                 pluginId = id,
@@ -143,7 +143,7 @@ class ScriptSearchSource(
                 pageSize = pageSize,
                 config = config.values,
             )
-            val raw = callRuntime(FUNCTION_GET_LYRICS, PluginJson.encodeToString(request))
+            val raw = callRuntime(FUNCTION_GET_LYRICS, pluginJson.encodeToString(request))
             val candidates = parser.parseLyricsCandidates(
                 rawJson = raw,
                 pluginId = id,
@@ -187,7 +187,7 @@ class ScriptSearchSource(
                 pageSize = pageSize,
                 config = config.values,
             )
-            val raw = callRuntime(FUNCTION_SEARCH_COVERS, PluginJson.encodeToString(request))
+            val raw = callRuntime(FUNCTION_SEARCH_COVERS, pluginJson.encodeToString(request))
             val results = parser.parseCoverResults(
                 rawJson = raw,
                 pluginId = id,
@@ -220,7 +220,7 @@ class ScriptSearchSource(
                 pageSize = pageSize,
                 config = config.values,
             )
-            val raw = callRuntime(FUNCTION_SEARCH_COVERS, PluginJson.encodeToString(request))
+            val raw = callRuntime(FUNCTION_SEARCH_COVERS, pluginJson.encodeToString(request))
             val results = parser.parseCoverResults(
                 rawJson = raw,
                 pluginId = id,

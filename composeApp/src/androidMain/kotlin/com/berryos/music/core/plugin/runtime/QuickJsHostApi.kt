@@ -1,9 +1,10 @@
 package com.berryos.music.core.plugin.runtime
 
 import android.util.Log
-import com.berryos.music.core.plugin.PluginJson
-import com.berryos.music.core.plugin.i18n.PluginLocalePreferences
+import com.berryos.music.core.plugin.contract.HostApiVersions
 import com.berryos.music.core.plugin.i18n.PluginStrings
+import com.berryos.music.core.plugin.locale.PluginLocalePreferences
+import com.berryos.music.core.plugin.pluginJson
 import com.berryos.music.quickjs.HostCallback
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -44,7 +45,7 @@ class QuickJsHostApi(
     private val pluginId: String = "default",
     private val cacheRootDir: File? = null,
     private val pluginStrings: PluginStrings? = null,
-    private val json: Json = PluginJson,
+    private val json: Json = pluginJson,
 ) : HostCallback {
     private val cancelled = AtomicBoolean(false)
     private val activeHttp = AtomicReference<Call?>(null)
@@ -733,8 +734,8 @@ data class HostAppInfo(
 }
 
 data class HostRuntimeInfo(
-    val pluginApiVersion: Int = HostApiRegistry.PLUGIN_PROTOCOL_VERSION,
-    val hostApiVersion: Int = HostApiRegistry.PLATFORM_API_VERSION,
+    val pluginApiVersion: Int = HostApiVersions.PLUGIN_PROTOCOL_VERSION,
+    val hostApiVersion: Int = HostApiVersions.PLATFORM_API_VERSION,
     val engine: String = "quickjs",
     val engineVersion: String? = null,
 ) {

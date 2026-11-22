@@ -1,6 +1,7 @@
 package com.berryos.music.core.plugin.i18n
 
 import com.berryos.music.core.database.entity.SourcePluginEntity
+import com.berryos.music.core.plugin.locale.PluginLocalePreferences
 import com.berryos.music.core.plugin.model.PluginManifest
 import kotlinx.serialization.json.Json
 import java.io.File

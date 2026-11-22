@@ -4,11 +4,11 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.berryos.music.core.database.entity.SourcePluginEntity
-import com.berryos.music.core.plugin.PluginJson
+import com.berryos.music.core.plugin.contract.HostApiVersions
 import com.berryos.music.core.plugin.i18n.PluginStrings
 import com.berryos.music.core.plugin.model.PluginManifest
+import com.berryos.music.core.plugin.pluginJson
 import com.berryos.music.core.plugin.registry.PluginRegistry
-import com.berryos.music.core.plugin.runtime.HostApiRegistry
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -106,7 +106,7 @@ class PluginInstaller(context: Context, private val registry: PluginRegistry) {
         val manifestFile = File(root, MANIFEST_FILE)
         return try {
             require(manifestFile.length() <= MAX_MANIFEST_BYTES) { "manifest.json is too large" }
-            val manifest = PluginJson.decodeFromString<PluginManifest>(manifestFile.readText())
+            val manifest = pluginJson.decodeFromString<PluginManifest>(manifestFile.readText())
             validate(manifest, root)
 
             val existing = registry.getPlugin(manifest.id)
@@ -142,10 +142,10 @@ class PluginInstaller(context: Context, private val registry: PluginRegistry) {
         require(manifest.name.isNotBlank()) { "Plugin name is blank" }
         require(manifest.versionCode >= 1) { "Invalid versionCode" }
         require(manifest.versionName.isNotBlank()) { "Invalid versionName" }
-        require(HostApiRegistry.supportsPluginApiVersion(manifest.apiVersion)) {
+        require(HostApiVersions.supportsPluginApiVersion(manifest.apiVersion)) {
             "Unsupported apiVersion ${manifest.apiVersion}"
         }
-        require(HostApiRegistry.supportsHostApiVersion(manifest.minHostApiVersion)) {
+        require(HostApiVersions.supportsHostApiVersion(manifest.minHostApiVersion)) {
             "Unsupported minHostApiVersion ${manifest.minHostApiVersion}"
         }
         val entry = safeChild(root, manifest.entry)
@@ -282,7 +282,7 @@ private fun PluginManifest.toEntity(dir: File, existing: SourcePluginEntity?): S
         description = description,
         pluginDir = dir.absolutePath,
         entryFile = entry,
-        capabilitiesJson = PluginJson.encodeToString(capabilities),
+        capabilitiesJson = pluginJson.encodeToString(capabilities),
         iconPath = icon?.let { File(dir, it).absolutePath },
         customName = existing?.customName,
         metadataEnabled = existing?.metadataEnabled ?: true,

@@ -1,6 +1,5 @@
 package com.berryos.music.core.plugin.contract
 
-import com.berryos.music.core.plugin.lyrics.TtmlTime
 import com.berryos.music.core.plugin.model.LyricsAgentEntry
 import com.berryos.music.core.plugin.model.LyricsCandidateResult
 import com.berryos.music.core.plugin.model.LyricsLine
