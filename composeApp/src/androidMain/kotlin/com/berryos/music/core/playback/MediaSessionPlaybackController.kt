@@ -218,9 +218,7 @@ private fun playbackMediaItem(track: Track): MediaItem = MediaItem.Builder()
             .setArtist(track.artist)
             .setAlbumTitle(track.album)
             .setDurationMs(track.durationMs)
-            .setArtworkUri(
-                if (track.source == SourceKey.Local) albumArtUri(track.albumId) else null,
-            )
+            .setArtworkUri(track.coverUrl?.let(Uri::parse))
             .build(),
     )
     .build()
@@ -233,7 +231,3 @@ private fun localUri(track: Track): Uri {
     }
     return ContentUris.withAppendedId(base, track.id.toLong())
 }
-
-private fun albumArtUri(albumId: String): Uri = ContentUris.withAppendedId(Uri.parse(ALBUM_ART_URI), albumId.toLong())
-
-private const val ALBUM_ART_URI = "content://media/external/audio/albumart"
