@@ -11,6 +11,17 @@ sealed interface SourceKey {
     data class Subsonic(val serverId: String) : SourceKey
 }
 
+/** Stable person identity plus the display name. */
+data class ArtistRef(val id: String, val name: String)
+
+/** Roles a person can have on a track. */
+enum class CreditRole {
+    ARTIST,
+    ALBUM_ARTIST,
+    COMPOSER,
+    LYRICIST,
+}
+
 data class Track(
     val source: SourceKey,
     val id: String,
@@ -23,7 +34,13 @@ data class Track(
     val trackNumber: Int,
     val year: Int,
     val streamUrl: String? = null,
-)
+    val coverUrl: String? = null,
+    val artists: List<ArtistRef> = emptyList(),
+) {
+    /** Every artist this track belongs to, falling back to the primary artist. */
+    val artistRefs: List<ArtistRef>
+        get() = artists.ifEmpty { listOf(ArtistRef(artistId, artist)) }
+}
 
 data class Album(
     val source: SourceKey,
@@ -56,4 +73,5 @@ fun LibrarySnapshot.album(source: SourceKey, albumId: String): Album? =
 fun LibrarySnapshot.artist(source: SourceKey, artistId: String): Artist? =
     artists.firstOrNull { it.source == source && it.id == artistId }
 
-fun LibrarySnapshot.coverUrlOf(track: Track): String? = album(track.source, track.albumId)?.coverUrl
+fun LibrarySnapshot.coverUrlOf(track: Track): String? = track.coverUrl
+    ?: album(track.source, track.albumId)?.coverUrl

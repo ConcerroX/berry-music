@@ -4,6 +4,7 @@ import com.berryos.music.core.auth.AuthConfig
 import com.berryos.music.core.auth.ServerAccount
 import com.berryos.music.core.model.Album
 import com.berryos.music.core.model.Artist
+import com.berryos.music.core.model.ArtistRef
 import com.berryos.music.core.model.LibrarySnapshot
 import com.berryos.music.core.model.SourceKey
 import com.berryos.music.core.model.Track
@@ -104,6 +105,7 @@ class SubsonicLibrarySource(
         trackNumber = track,
         year = year,
         streamUrl = client.streamUrl(username, jwt, id),
+        artists = listOf(ArtistRef(artistId.ifBlank { artist }, artist)),
     )
 
     private companion object {

@@ -25,7 +25,9 @@ class LibraryViewModel(private val repository: LibraryRepository, libraryChanges
     }
 
     private suspend fun refresh() {
-        _state.value = LibraryUiState.Loading
+        if (_state.value !is LibraryUiState.Ready) {
+            _state.value = LibraryUiState.Loading
+        }
         _state.value = runCatching { repository.load() }.fold(
             onSuccess = { LibraryUiState.Ready(it) },
             onFailure = { LibraryUiState.Error(it.message ?: getString(Res.string.failed_to_load_library)) },

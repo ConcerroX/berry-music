@@ -40,7 +40,9 @@ fun ArtistScreen(
             PlaceholderScreen(title, stringResource(Res.string.artist_not_found))
         } else {
             val tracks = snapshot.tracks
-                .filter { it.source == artist.source && it.artistId == artist.id }
+                .filter { track ->
+                    track.source == artist.source && track.artistRefs.any { it.id == artist.id }
+                }
                 .sortedWith(compareBy({ it.album }, { it.trackNumber }))
             val playbackSource = PlaybackSource.Artist(artist.id)
             MediaDetailScreen(
