@@ -24,10 +24,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -46,7 +48,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -54,6 +58,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.RChipInput
+import art.rippledesign.compose.rui.RExposedDropdownMenuBox
+import art.rippledesign.compose.rui.RExposedDropdownMenuDefaults
 import art.rippledesign.compose.rui.ROutlinedTextField
 import art.rippledesign.compose.rui.datepicker.DatePicker
 import art.rippledesign.compose.rui.datepicker.RDatePickerDialog
@@ -277,6 +283,8 @@ private fun TagInspectionList(
                 ?.takeIf { it.field in PERSON_FIELDS && it.picture == null }
             val dateEntry = (row as? TagEntryRow.Single)?.entry
                 ?.takeIf { it.field == TrackTagField.DATE && it.picture == null }
+            val languageEntry = (row as? TagEntryRow.Single)?.entry
+                ?.takeIf { it.field == TrackTagField.LANGUAGE && it.picture == null }
             when {
                 personEntry != null && rowField != null -> PersonChipField(
                     label = entryLabel(personEntry, showTechnicalDetails),
@@ -290,6 +298,13 @@ private fun TagInspectionList(
                     label = entryLabel(dateEntry, showTechnicalDetails),
                     value = state.edits[TrackTagField.DATE].orEmpty(),
                     onValueChange = { onEdit(TrackTagField.DATE, it) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
+                languageEntry != null -> LanguageField(
+                    label = entryLabel(languageEntry, showTechnicalDetails),
+                    value = state.edits[TrackTagField.LANGUAGE].orEmpty(),
+                    onValueChange = { onEdit(TrackTagField.LANGUAGE, it) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
 
@@ -355,7 +370,7 @@ private fun PersonChipField(
                 )
                 Spacer(Modifier.width(24.dp))
                 Text(
-                    text = highlightedArtistName(suggestion, query),
+                    text = highlightedMatch(suggestion, query),
                     style = MaterialTheme.typography.body1,
                 )
             }
@@ -414,6 +429,100 @@ private fun DateField(
     }
 }
 
+@Composable
+private fun LanguageField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+    var userTyped by remember { mutableStateOf(false) }
+    var lastProgrammaticText by remember { mutableStateOf<String?>(null) }
+    val focusManager = LocalFocusManager.current
+    val state = rememberTextFieldState(displayLanguage(value))
+    // Show the raw value while editing so non-standard values stay editable; otherwise show the
+    // readable "Name (code)" form.
+    LaunchedEffect(value, focused) {
+        val display = if (focused) value else displayLanguage(value)
+        if (state.text.toString() != display) {
+            lastProgrammaticText = display
+            state.setTextAndPlaceCursorAtEnd(display)
+        }
+    }
+    LaunchedEffect(state) {
+        var first = true
+        snapshotFlow { state.text.toString() }.collect { text ->
+            if (first) {
+                first = false
+            } else if (text == lastProgrammaticText) {
+                lastProgrammaticText = null
+            } else {
+                userTyped = true
+                onValueChange(text)
+            }
+        }
+    }
+    val query = state.text.toString()
+    val suggestions = remember(query) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            LANGUAGE_OPTIONS
+        } else {
+            LANGUAGE_OPTIONS.filter { option -> option.matchesQuery(trimmed) }
+                .sortedWith(
+                    compareByDescending<LanguageOption> { option ->
+                        languageLabel(option).startsWith(trimmed, ignoreCase = true) ||
+                            option.name.startsWith(trimmed, ignoreCase = true)
+                    }.thenBy { it.name },
+                )
+        }
+    }
+    LaunchedEffect(query, suggestions, userTyped) {
+        if (userTyped) expanded = suggestions.isNotEmpty()
+    }
+    RExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { open -> expanded = open && suggestions.isNotEmpty() },
+        modifier = modifier,
+    ) {
+        ROutlinedTextField(
+            state = state,
+            label = { Text(label) },
+            trailingIcon = { RExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            textStyle = MaterialTheme.typography.body1,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged {
+                        focused = it.isFocused
+                        if (!it.isFocused) {
+                            userTyped = false
+                            expanded = false
+                        }
+                    },
+        )
+        RExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            suggestions.forEach { option ->
+                DropdownMenuItem(
+                    onClick = {
+                        onValueChange(option.code)
+                        lastProgrammaticText = option.code
+                        state.setTextAndPlaceCursorAtEnd(option.code)
+                        expanded = false
+                        focusManager.clearFocus()
+                    },
+                ) {
+                    Text(highlightedMatch(languageLabel(option), query))
+                }
+            }
+        }
+    }
+}
+
 private val DATE_PATTERN = Regex("""(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?""")
 
 @OptIn(ExperimentalTime::class)
@@ -434,14 +543,14 @@ private fun formatUtcDateMillis(millis: Long): String {
     return "${date.year}-$month-$day"
 }
 
-private fun highlightedArtistName(name: String, query: String): AnnotatedString {
+private fun highlightedMatch(text: String, query: String): AnnotatedString {
     val trimmed = query.trim()
-    val start = if (trimmed.isEmpty()) -1 else name.indexOf(trimmed, ignoreCase = true)
+    val start = if (trimmed.isEmpty()) -1 else text.indexOf(trimmed, ignoreCase = true)
     return if (start < 0) {
-        AnnotatedString(name)
+        AnnotatedString(text)
     } else {
         buildAnnotatedString {
-            append(name)
+            append(text)
             addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, start + trimmed.length)
         }
     }
