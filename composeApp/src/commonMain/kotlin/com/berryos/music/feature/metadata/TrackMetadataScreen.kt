@@ -6,16 +6,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -45,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -139,7 +140,15 @@ fun TrackMetadataScreen(
     )
     Column(modifier = Modifier.fillMaxSize()) {
         topBar(topBarState)
-        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    // Keep the content above the software keyboard, or above the navigation bar
+                    // when the keyboard is closed.
+                    .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+        ) {
             when (val current = state) {
                 TrackTagUiState.Loading -> Box(Modifier.fillMaxSize())
 
@@ -226,17 +235,11 @@ private fun TagInspectionList(
 ) {
     val inspection = state.inspection
     val listState = rememberLazyListState()
-    val density = LocalDensity.current
-    val navigationBarBottom = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
     val entries = remember(inspection.entries) {
         inspection.entries.filterNot { it.field == TrackTagField.LYRICS }
     }
     val rows = remember(entries) { entries.distinctEditableFields().toRows() }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = navigationBarBottom),
-    ) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
             val filenameState = rememberSyncedTagField(state.filename, onFilenameEdit)
             TagTextField(
@@ -495,13 +498,7 @@ private fun LyricsEditor(
         value = state.edits[TrackTagField.LYRICS].orEmpty(),
         onValueChange = { onEdit(TrackTagField.LYRICS, it) },
     )
-    val density = LocalDensity.current
-    val navigationBarBottom = with(density) { WindowInsets.navigationBars.getBottom(density).toDp() }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + navigationBarBottom),
-    ) {
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         if (state.error != null) {
             Text(text = state.error, color = MaterialTheme.colors.error)
         }
