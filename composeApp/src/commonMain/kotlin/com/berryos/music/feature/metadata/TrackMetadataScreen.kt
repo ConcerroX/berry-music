@@ -26,13 +26,17 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
+import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -50,6 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.RChipInput
 import art.rippledesign.compose.rui.ROutlinedTextField
+import art.rippledesign.compose.rui.datepicker.DatePicker
+import art.rippledesign.compose.rui.datepicker.RDatePickerDialog
+import art.rippledesign.compose.rui.datepicker.rememberDatePickerState
 import art.rippledesign.compose.rui.pager.RHorizontalPager
 import com.berryos.music.core.datastore.AppSettingsRepository
 import com.berryos.music.core.designsystem.PlaceholderScreen
@@ -58,7 +65,9 @@ import com.berryos.music.core.metadata.TrackTagField
 import com.berryos.music.core.metadata.rememberTrackTagWritePermission
 import com.berryos.music.core.model.Track
 import com.berryos.music.resources.Res
+import com.berryos.music.resources.cancel
 import com.berryos.music.resources.default_album_art
+import com.berryos.music.resources.ic_calendar_month
 import com.berryos.music.resources.metadata
 import com.berryos.music.resources.metadata_field_album
 import com.berryos.music.resources.metadata_field_album_artist
@@ -83,7 +92,15 @@ import com.berryos.music.resources.metadata_no_tag
 import com.berryos.music.resources.metadata_only_local
 import com.berryos.music.resources.metadata_picture_type
 import com.berryos.music.resources.metadata_tag_type
+import com.berryos.music.resources.ok
 import com.berryos.music.resources.track_not_found
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -255,12 +272,21 @@ private fun TagInspectionList(
             val rowField = (row as? TagEntryRow.Single)?.entry?.field
             val personEntry = (row as? TagEntryRow.Single)?.entry
                 ?.takeIf { it.field in PERSON_FIELDS && it.picture == null }
+            val dateEntry = (row as? TagEntryRow.Single)?.entry
+                ?.takeIf { it.field == TrackTagField.DATE && it.picture == null }
             when {
                 personEntry != null && rowField != null -> PersonChipField(
                     label = entryLabel(personEntry, showTechnicalDetails),
                     values = state.people[rowField].orEmpty(),
                     suggestions = artistSuggestions,
                     onValuesChange = { values -> onPeopleChange(rowField, values) },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
+                dateEntry != null -> DateField(
+                    label = entryLabel(dateEntry, showTechnicalDetails),
+                    value = state.edits[TrackTagField.DATE].orEmpty(),
+                    onValueChange = { onEdit(TrackTagField.DATE, it) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
 
@@ -334,6 +360,77 @@ private fun PersonChipField(
     )
 }
 
+@OptIn(ExperimentalTime::class)
+@Composable
+private fun DateField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val state = rememberSyncedTagField(value, onValueChange)
+    var showPicker by rememberSaveable { mutableStateOf(false) }
+    TagTextField(
+        label = label,
+        state = state,
+        modifier = modifier,
+        lineLimits = TextFieldLineLimits.SingleLine,
+        trailingIcon = {
+            IconButton(onClick = { showPicker = true }) {
+                Icon(
+                    painter = painterResource(Res.drawable.ic_calendar_month),
+                    contentDescription = label,
+                )
+            }
+        },
+    )
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = remember(value) { dateToUtcMillis(value) },
+        )
+        RDatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) {
+                    Text(stringResource(Res.string.cancel).uppercase())
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pickerState.selectedDateMillis?.let { onValueChange(formatUtcDateMillis(it)) }
+                        showPicker = false
+                    },
+                ) {
+                    Text(stringResource(Res.string.ok).uppercase())
+                }
+            },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
+}
+
+private val DATE_PATTERN = Regex("""(\d{4})(?:-(\d{1,2})(?:-(\d{1,2}))?)?""")
+
+@OptIn(ExperimentalTime::class)
+private fun dateToUtcMillis(text: String): Long? {
+    val match = DATE_PATTERN.matchEntire(text.trim()) ?: return null
+    val year = match.groupValues[1].toIntOrNull() ?: return null
+    val month = match.groupValues[2].toIntOrNull() ?: 1
+    val day = match.groupValues[3].toIntOrNull() ?: 1
+    val date = runCatching { LocalDate(year, month, day) }.getOrNull() ?: return null
+    return date.atStartOfDayIn(TimeZone.UTC).toEpochMilliseconds()
+}
+
+@OptIn(ExperimentalTime::class)
+private fun formatUtcDateMillis(millis: Long): String {
+    val date = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.UTC).date
+    val month = date.month.number.toString().padStart(2, '0')
+    val day = date.day.toString().padStart(2, '0')
+    return "${date.year}-$month-$day"
+}
+
 private fun highlightedArtistName(name: String, query: String): AnnotatedString {
     val trimmed = query.trim()
     val start = if (trimmed.isEmpty()) -1 else name.indexOf(trimmed, ignoreCase = true)
@@ -354,12 +451,14 @@ private fun TagTextField(
     modifier: Modifier = Modifier,
     italic: Boolean = false,
     readOnly: Boolean = false,
+    trailingIcon: @Composable (() -> Unit)? = null,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = FIELD_MAX_LINES),
 ) {
     ROutlinedTextField(
         state = state,
         readOnly = readOnly,
         label = { Text(label) },
+        trailingIcon = trailingIcon,
         lineLimits = lineLimits,
         textStyle = MaterialTheme.typography.body1.copy(
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
