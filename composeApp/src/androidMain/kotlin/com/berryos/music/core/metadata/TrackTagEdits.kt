@@ -4,8 +4,12 @@ import com.berryos.audiometadata.AudioFile
 import com.berryos.audiometadata.ExperimentalAudioMetadataApi
 
 @OptIn(ExperimentalAudioMetadataApi::class)
-internal fun AudioFile.applyEdits(edits: Map<TrackTagField, String>, artists: List<String>?) {
-    artists?.let { this.artists = it }
+internal fun AudioFile.applyEdits(edits: Map<TrackTagField, String>, people: Map<TrackTagField, List<String>>) {
+    people[TrackTagField.ARTIST]?.let { artists = it }
+    people[TrackTagField.COMPOSER]?.let { composers = it }
+    people[TrackTagField.ALBUM_ARTIST]?.let { albumArtists = it }
+    people[TrackTagField.LYRICIST]?.let { lyricists = it }
+    people[TrackTagField.ARRANGER]?.let { arrangers = it }
     applyTextEdits(edits)
     applyNumberEdits(edits)
 }
@@ -13,9 +17,6 @@ internal fun AudioFile.applyEdits(edits: Map<TrackTagField, String>, artists: Li
 private fun AudioFile.applyTextEdits(edits: Map<TrackTagField, String>) {
     edits[TrackTagField.TITLE]?.let { title = it.ifBlank { null } }
     edits[TrackTagField.ALBUM]?.let { album = it.ifBlank { null } }
-    edits[TrackTagField.ALBUM_ARTIST]?.let { albumArtist = it.ifBlank { null } }
-    edits[TrackTagField.COMPOSER]?.let { composers = it.splitValues() }
-    edits[TrackTagField.LYRICIST]?.let { lyricist = it.ifBlank { null } }
     edits[TrackTagField.GENRE]?.let { genres = it.splitValues() }
     edits[TrackTagField.LANGUAGE]?.let { language = it.ifBlank { null } }
     edits[TrackTagField.DATE]?.let { recordingDate = it.ifBlank { null } }

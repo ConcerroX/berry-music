@@ -8,9 +8,13 @@ interface TrackTagRepository {
 
     /**
      * Writes [edits] back to the file; empty values remove the corresponding field.
-     * [artists] replaces the multi-valued artist list when present.
+     * [personValues] replaces the multi-valued person lists for the given fields.
      */
-    suspend fun save(track: Track, edits: Map<TrackTagField, String>, artists: List<String>? = null)
+    suspend fun save(
+        track: Track,
+        edits: Map<TrackTagField, String>,
+        personValues: Map<TrackTagField, List<String>> = emptyMap(),
+    )
 
     /** Renames the file through MediaStore. */
     suspend fun rename(track: Track, filename: String)
@@ -22,6 +26,10 @@ data class TrackTagInspection(
     val entries: List<TagEntry>,
     val filename: String? = null,
     val artists: List<String> = emptyList(),
+    val composers: List<String> = emptyList(),
+    val albumArtists: List<String> = emptyList(),
+    val lyricists: List<String> = emptyList(),
+    val arrangers: List<String> = emptyList(),
 )
 
 /** Fields that have a readable label; other entries keep their raw key. */
@@ -32,6 +40,7 @@ enum class TrackTagField {
     ALBUM_ARTIST,
     COMPOSER,
     LYRICIST,
+    ARRANGER,
     GENRE,
     LANGUAGE,
     DATE,

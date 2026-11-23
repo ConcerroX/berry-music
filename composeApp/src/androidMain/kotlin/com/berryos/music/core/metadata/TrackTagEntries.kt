@@ -14,6 +14,7 @@ private val ENTRY_PRIORITY = listOf(
     TrackTagField.ALBUM_ARTIST,
     TrackTagField.COMPOSER,
     TrackTagField.LYRICIST,
+    TrackTagField.ARRANGER,
     TrackTagField.GENRE,
     TrackTagField.LANGUAGE,
     TrackTagField.DATE,
@@ -60,6 +61,7 @@ internal fun AudioFile.expectedFieldKeys(): Map<TrackTagField, String> = when (t
         TrackTagField.ALBUM_ARTIST to VorbisCommentKeys.ALBUM_ARTIST,
         TrackTagField.COMPOSER to VorbisCommentKeys.COMPOSER,
         TrackTagField.LYRICIST to VorbisCommentKeys.LYRICIST,
+        TrackTagField.ARRANGER to VorbisCommentKeys.ARRANGER,
         TrackTagField.GENRE to VorbisCommentKeys.GENRE,
         TrackTagField.LANGUAGE to VorbisCommentKeys.LANGUAGE,
         TrackTagField.DATE to VorbisCommentKeys.DATE,
@@ -78,6 +80,7 @@ internal fun AudioFile.expectedFieldKeys(): Map<TrackTagField, String> = when (t
         TrackTagField.ALBUM_ARTIST to Mp4ItemIds.ALBUM_ARTIST,
         TrackTagField.COMPOSER to Mp4ItemIds.COMPOSER,
         TrackTagField.LYRICIST to Mp4ItemIds.freeformIdentifier(Mp4ItemIds.LYRICIST),
+        TrackTagField.ARRANGER to Mp4ItemIds.freeformIdentifier(Mp4ItemIds.ARRANGER),
         TrackTagField.GENRE to Mp4ItemIds.GENRE,
         TrackTagField.LANGUAGE to Mp4ItemIds.freeformIdentifier(Mp4ItemIds.LANGUAGE),
         TrackTagField.DATE to Mp4ItemIds.YEAR,
@@ -102,6 +105,12 @@ private fun AudioFile.id3FieldKeys(): Map<TrackTagField, String> {
         TrackTagField.ALBUM_ARTIST to id(Id3v2FrameIds.V22.ALBUM_ARTIST, Id3v2FrameIds.ALBUM_ARTIST),
         TrackTagField.COMPOSER to id(Id3v2FrameIds.V22.COMPOSER, Id3v2FrameIds.COMPOSER),
         TrackTagField.LYRICIST to id(Id3v2FrameIds.V22.LYRICIST, Id3v2FrameIds.LYRICIST),
+        TrackTagField.ARRANGER to when (id3Version) {
+            Id3Version.V22 -> Id3v2FrameIds.V22.INVOLVED_PEOPLE
+            Id3Version.V23 -> Id3v2FrameIds.INVOLVED_PEOPLE_V23
+            Id3Version.V24 -> Id3v2FrameIds.INVOLVED_PEOPLE
+            null -> Id3v2FrameIds.INVOLVED_PEOPLE
+        },
         TrackTagField.GENRE to id(Id3v2FrameIds.V22.GENRE, Id3v2FrameIds.GENRE),
         TrackTagField.LANGUAGE to id(Id3v2FrameIds.V22.LANGUAGE, Id3v2FrameIds.LANGUAGE),
         TrackTagField.DATE to when (id3Version) {

@@ -37,7 +37,11 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
         } ?: throw IllegalStateException("Unable to open the audio file")
     }
 
-    override suspend fun save(track: Track, edits: Map<TrackTagField, String>, artists: List<String>?) {
+    override suspend fun save(
+        track: Track,
+        edits: Map<TrackTagField, String>,
+        personValues: Map<TrackTagField, List<String>>,
+    ) {
         withContext(Dispatchers.IO) {
             val mediaId = track.id.toLongOrNull()
                 ?: throw IllegalArgumentException("Track id is not a MediaStore id")
@@ -45,7 +49,7 @@ class AndroidTrackTagRepository(context: Context) : TrackTagRepository {
                 val source = FileDescriptorSource(descriptor)
                 val audio = AudioFile.read(source, includeArtworks = false)
                     ?: error("Unable to read the audio file")
-                audio.applyEdits(edits, artists)
+                audio.applyEdits(edits, personValues)
                 audio.save(source)
             } ?: error("Unable to open the audio file")
         }
@@ -112,6 +116,10 @@ private fun AudioFile.toInspection(): TrackTagInspection {
             .filledRating(extensions.rating?.toString())
             .prioritizedByField(),
         artists = artists.filter(String::isNotBlank),
+        composers = composers.filter(String::isNotBlank),
+        albumArtists = albumArtists.filter(String::isNotBlank),
+        lyricists = lyricists.filter(String::isNotBlank),
+        arrangers = arrangers.filter(String::isNotBlank),
     )
 }
 
@@ -200,6 +208,12 @@ private fun trackTagField(key: String): TrackTagField? = when (key.lowercase()) 
     VorbisCommentKeys.LYRICIST.lowercase(), VorbisCommentKeys.TEXT.lowercase(),
     Mp4ItemIds.freeformIdentifier(Mp4ItemIds.LYRICIST).lowercase(),
     -> TrackTagField.LYRICIST
+
+    Id3v2FrameIds.INVOLVED_PEOPLE.lowercase(), Id3v2FrameIds.INVOLVED_PEOPLE_V23.lowercase(),
+    Id3v2FrameIds.V22.INVOLVED_PEOPLE.lowercase(),
+    VorbisCommentKeys.ARRANGER.lowercase(),
+    Mp4ItemIds.freeformIdentifier(Mp4ItemIds.ARRANGER).lowercase(),
+    -> TrackTagField.ARRANGER
 
     Id3v2FrameIds.GENRE.lowercase(), Id3v2FrameIds.V22.GENRE.lowercase(),
     VorbisCommentKeys.GENRE.lowercase(), Mp4ItemIds.GENRE.lowercase(),

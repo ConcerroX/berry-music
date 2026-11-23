@@ -58,6 +58,7 @@ import com.berryos.music.resources.default_album_art
 import com.berryos.music.resources.metadata
 import com.berryos.music.resources.metadata_field_album
 import com.berryos.music.resources.metadata_field_album_artist
+import com.berryos.music.resources.metadata_field_arranger
 import com.berryos.music.resources.metadata_field_artist
 import com.berryos.music.resources.metadata_field_artwork
 import com.berryos.music.resources.metadata_field_composer
@@ -141,7 +142,7 @@ fun TrackMetadataScreen(
                     showTechnicalDetails = appSettings.showTechnicalDetails,
                     artistSuggestions = artistSuggestions,
                     onFilenameEdit = viewModel::editFilename,
-                    onArtistsChange = viewModel::editArtists,
+                    onPeopleChange = viewModel::editPeople,
                     onEdit = viewModel::edit,
                 )
             }
@@ -158,7 +159,7 @@ private fun TabbedContent(
     showTechnicalDetails: Boolean,
     artistSuggestions: List<String>,
     onFilenameEdit: (String) -> Unit,
-    onArtistsChange: (List<String>) -> Unit,
+    onPeopleChange: (TrackTagField, List<String>) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     LaunchedEffect(pagerState.currentPage) {
@@ -180,7 +181,7 @@ private fun TabbedContent(
                 showTechnicalDetails = showTechnicalDetails,
                 artistSuggestions = artistSuggestions,
                 onFilenameEdit = onFilenameEdit,
-                onArtistsChange = onArtistsChange,
+                onPeopleChange = onPeopleChange,
                 onEdit = onEdit,
             )
 
@@ -199,7 +200,7 @@ private fun TagInspectionList(
     showTechnicalDetails: Boolean,
     artistSuggestions: List<String>,
     onFilenameEdit: (String) -> Unit,
-    onArtistsChange: (List<String>) -> Unit,
+    onPeopleChange: (TrackTagField, List<String>) -> Unit,
     onEdit: (TrackTagField, String) -> Unit,
 ) {
     val inspection = state.inspection
@@ -241,14 +242,15 @@ private fun TagInspectionList(
             }
         }
         items(rows, key = { it.key() }) { row ->
-            val artistEntry = (row as? TagEntryRow.Single)?.entry
-                ?.takeIf { it.field == TrackTagField.ARTIST && it.picture == null }
+            val rowField = (row as? TagEntryRow.Single)?.entry?.field
+            val personEntry = (row as? TagEntryRow.Single)?.entry
+                ?.takeIf { it.field in PERSON_FIELDS && it.picture == null }
             when {
-                artistEntry != null -> ArtistChipField(
-                    label = entryLabel(artistEntry, showTechnicalDetails),
-                    artists = state.artists,
+                personEntry != null && rowField != null -> PersonChipField(
+                    label = entryLabel(personEntry, showTechnicalDetails),
+                    values = state.people[rowField].orEmpty(),
                     suggestions = artistSuggestions,
-                    onArtistsChange = onArtistsChange,
+                    onValuesChange = { values -> onPeopleChange(rowField, values) },
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
 
@@ -267,16 +269,16 @@ private fun TagInspectionList(
 }
 
 @Composable
-private fun ArtistChipField(
+private fun PersonChipField(
     label: String,
-    artists: List<String>,
+    values: List<String>,
     suggestions: List<String>,
-    onArtistsChange: (List<String>) -> Unit,
+    onValuesChange: (List<String>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     RChipInput(
-        values = artists,
-        onValuesChange = onArtistsChange,
+        values = values,
+        onValuesChange = onValuesChange,
         label = { Text(label) },
         modifier = modifier,
         chipLeadingIcon = {
@@ -295,13 +297,13 @@ private fun ArtistChipField(
                 suggestions
                     .filter { it.contains(trimmed, ignoreCase = true) }
                     .filterNot { candidate ->
-                        artists.any { it.equals(candidate, ignoreCase = true) }
+                        values.any { it.equals(candidate, ignoreCase = true) }
                     }
                     .sortedWith(
                         compareByDescending<String> { it.startsWith(trimmed, ignoreCase = true) }
                             .thenBy { it.lowercase() },
                     )
-                    .take(MAX_ARTIST_SUGGESTIONS)
+                    .take(MAX_PERSON_SUGGESTIONS)
             }
         },
         suggestionContent = { suggestion, query ->
@@ -518,6 +520,7 @@ private val FIELD_LABELS = mapOf(
     TrackTagField.ALBUM_ARTIST to Res.string.metadata_field_album_artist,
     TrackTagField.COMPOSER to Res.string.metadata_field_composer,
     TrackTagField.LYRICIST to Res.string.metadata_field_lyricist,
+    TrackTagField.ARRANGER to Res.string.metadata_field_arranger,
     TrackTagField.GENRE to Res.string.metadata_field_genre,
     TrackTagField.LANGUAGE to Res.string.metadata_field_language,
     TrackTagField.DATE to Res.string.metadata_field_date,
@@ -531,7 +534,15 @@ private val FIELD_LABELS = mapOf(
 )
 
 private const val FIELD_MAX_LINES = 4
-private const val MAX_ARTIST_SUGGESTIONS = 8
+private const val MAX_PERSON_SUGGESTIONS = 8
+
+private val PERSON_FIELDS = setOf(
+    TrackTagField.ARTIST,
+    TrackTagField.COMPOSER,
+    TrackTagField.ALBUM_ARTIST,
+    TrackTagField.LYRICIST,
+    TrackTagField.ARRANGER,
+)
 private const val TAB_METADATA = 0
 private const val TAB_LYRICS = 1
 private const val TAB_COUNT = 2

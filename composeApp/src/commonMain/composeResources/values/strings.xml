@@ -90,6 +90,7 @@
     <string name="metadata_field_album_artist">Album Artist</string>
     <string name="metadata_field_composer">Composer</string>
     <string name="metadata_field_lyricist">Lyricist</string>
+    <string name="metadata_field_arranger">Arranger</string>
     <string name="metadata_field_genre">Genre</string>
     <string name="metadata_field_language">Language</string>
     <string name="metadata_field_date">Date</string>

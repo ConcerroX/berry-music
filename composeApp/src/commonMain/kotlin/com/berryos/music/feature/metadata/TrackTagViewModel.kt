@@ -22,8 +22,8 @@ sealed interface TrackTagUiState {
     data object NotLocal : TrackTagUiState
     data class Ready(
         val inspection: TrackTagInspection,
-        val originalArtists: List<String> = inspection.artists,
-        val artists: List<String> = originalArtists,
+        val originalPeople: Map<TrackTagField, List<String>> = inspection.personValues(),
+        val people: Map<TrackTagField, List<String>> = originalPeople,
         val originalFilename: String = inspection.filename.orEmpty(),
         val filename: String = originalFilename,
         val originalEdits: Map<TrackTagField, String> = inspection.initialEdits(),
@@ -32,17 +32,33 @@ sealed interface TrackTagUiState {
         val error: String? = null,
     ) : TrackTagUiState {
         val dirty: Boolean
-            get() = edits != originalEdits || artists != originalArtists || filename != originalFilename
+            get() = edits != originalEdits || people != originalPeople || filename != originalFilename
     }
 
     data class Error(val message: String) : TrackTagUiState
 }
 
+private val PERSON_FIELDS = setOf(
+    TrackTagField.ARTIST,
+    TrackTagField.COMPOSER,
+    TrackTagField.ALBUM_ARTIST,
+    TrackTagField.LYRICIST,
+    TrackTagField.ARRANGER,
+)
+
+private fun TrackTagInspection.personValues(): Map<TrackTagField, List<String>> = mapOf(
+    TrackTagField.ARTIST to artists,
+    TrackTagField.COMPOSER to composers,
+    TrackTagField.ALBUM_ARTIST to albumArtists,
+    TrackTagField.LYRICIST to lyricists,
+    TrackTagField.ARRANGER to arrangers,
+)
+
 private fun TrackTagInspection.initialEdits(): Map<TrackTagField, String> = buildMap {
     val grouped = mutableMapOf<TrackTagField, MutableList<String>>()
     this@initialEdits.entries.forEach { entry ->
         val field = entry.field
-        if (field != null && field != TrackTagField.ARTIST && entry.picture == null) {
+        if (field != null && field !in PERSON_FIELDS && entry.picture == null) {
             grouped.getOrPut(field) { mutableListOf() } += entry.value.orEmpty()
         }
     }
@@ -88,10 +104,10 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
         _state.value = current.copy(edits = current.edits + (field to value), error = null)
     }
 
-    fun editArtists(values: List<String>) {
+    fun editPeople(field: TrackTagField, values: List<String>) {
         val current = _state.value as? TrackTagUiState.Ready ?: return
-        if (current.artists == values) return
-        _state.value = current.copy(artists = values, error = null)
+        if (current.people[field] == values) return
+        _state.value = current.copy(people = current.people + (field to values), error = null)
     }
 
     fun editFilename(value: String) {
@@ -107,8 +123,8 @@ class TrackTagViewModel(private val repository: TrackTagRepository) : ViewModel(
         _state.value = current.copy(saving = true, error = null)
         viewModelScope.launch {
             _state.value = runCatching {
-                if (current.edits != current.originalEdits || current.artists != current.originalArtists) {
-                    repository.save(track, current.edits, current.artists)
+                if (current.edits != current.originalEdits || current.people != current.originalPeople) {
+                    repository.save(track, current.edits, current.people)
                 }
                 if (current.filename != current.originalFilename) {
                     repository.rename(track, current.filename)
