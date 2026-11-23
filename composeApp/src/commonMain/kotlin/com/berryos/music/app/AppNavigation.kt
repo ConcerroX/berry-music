@@ -321,11 +321,8 @@ private fun AppNavDisplay(
                     }
                     val artistSuggestions = (libraryState as? LibraryUiState.Ready)
                         ?.snapshot
-                        ?.artists
+                        ?.people
                         .orEmpty()
-                        .filter { it.source == SourceKey.Local }
-                        .map { it.name }
-                        .distinct()
                     TrackMetadataScreen(
                         track,
                         settings,

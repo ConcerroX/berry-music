@@ -20,5 +20,6 @@ private fun LibrarySnapshot.filtered(localOnly: Boolean): LibrarySnapshot {
         tracks = tracks.filter { matches(it.source) },
         albums = albums.filter { matches(it.source) },
         artists = artists.filter { matches(it.source) },
+        people = people,
     )
 }

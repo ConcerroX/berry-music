@@ -20,6 +20,7 @@ enum class CreditRole {
     ALBUM_ARTIST,
     COMPOSER,
     LYRICIST,
+    ARRANGER,
 }
 
 data class Track(
@@ -65,6 +66,7 @@ data class LibrarySnapshot(
     val tracks: List<Track> = emptyList(),
     val albums: List<Album> = emptyList(),
     val artists: List<Artist> = emptyList(),
+    val people: List<String> = emptyList(),
 )
 
 fun LibrarySnapshot.album(source: SourceKey, albumId: String): Album? =

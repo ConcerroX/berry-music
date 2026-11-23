@@ -13,6 +13,7 @@ class LibraryRepository(private val sources: List<LibrarySource>) {
             tracks = snapshots.flatMap { it.tracks }.sortedBy { it.title.lowercase() },
             albums = snapshots.flatMap { it.albums }.sortedBy { it.title.lowercase() },
             artists = snapshots.flatMap { it.artists }.sortedBy { it.name.lowercase() },
+            people = snapshots.flatMap { it.people }.distinct().sortedBy { it.lowercase() },
         )
     }
 }

@@ -168,7 +168,8 @@ class LocalLibrarySync(context: Context, private val dao: LocalLibraryDao, priva
         val artists = metadata?.artists.orEmpty().filter { it.isNotBlank() }
             .ifEmpty { listOf(labels.artist) }
         val album = metadata?.album?.takeIf { it.isNotBlank() } ?: labels.album
-        val albumArtist = metadata?.albumArtist?.takeIf { it.isNotBlank() }
+        val albumArtists = metadata?.albumArtists.orEmpty().filter { it.isNotBlank() }
+        val albumArtist = albumArtists.firstOrNull()
         val displayArtist = artists.first()
         val albumKey = if (album == labels.album) {
             UNKNOWN_ALBUM_KEY
@@ -178,12 +179,15 @@ class LocalLibrarySync(context: Context, private val dao: LocalLibraryDao, priva
 
         val candidates = buildList {
             artists.forEach { add(CreditCandidate(CreditRole.ARTIST, it)) }
-            albumArtist?.let { add(CreditCandidate(CreditRole.ALBUM_ARTIST, it)) }
+            albumArtists.forEach { add(CreditCandidate(CreditRole.ALBUM_ARTIST, it)) }
             metadata?.composers.orEmpty().filter { it.isNotBlank() }.forEach {
                 add(CreditCandidate(CreditRole.COMPOSER, it))
             }
-            metadata?.lyricist?.takeIf { it.isNotBlank() }?.let {
+            metadata?.lyricists.orEmpty().filter { it.isNotBlank() }.forEach {
                 add(CreditCandidate(CreditRole.LYRICIST, it))
+            }
+            metadata?.arrangers.orEmpty().filter { it.isNotBlank() }.forEach {
+                add(CreditCandidate(CreditRole.ARRANGER, it))
             }
         }
 

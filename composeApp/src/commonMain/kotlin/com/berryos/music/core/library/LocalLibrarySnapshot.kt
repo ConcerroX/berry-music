@@ -92,5 +92,10 @@ internal fun buildLocalSnapshot(
             )
         }
 
-    return LibrarySnapshot(tracks = models, albums = albums, artists = artists)
+    return LibrarySnapshot(
+        tracks = models,
+        albums = albums,
+        artists = artists,
+        people = people.map { it.name }.distinct().sortedBy { it.lowercase() },
+    )
 }
