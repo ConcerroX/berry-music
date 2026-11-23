@@ -56,6 +56,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import art.rippledesign.compose.rui.RChipInput
 import art.rippledesign.compose.rui.RExposedDropdownMenuBox
@@ -564,6 +565,7 @@ private fun TagTextField(
     italic: Boolean = false,
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     lineLimits: TextFieldLineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = FIELD_MAX_LINES),
 ) {
     ROutlinedTextField(
@@ -571,6 +573,7 @@ private fun TagTextField(
         readOnly = readOnly,
         label = { Text(label) },
         trailingIcon = trailingIcon,
+        keyboardOptions = keyboardOptions,
         lineLimits = lineLimits,
         textStyle = MaterialTheme.typography.body1.copy(
             fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
@@ -656,9 +659,17 @@ private fun EntryRow(
             state = textState,
             modifier = modifier,
             readOnly = field == null,
+            keyboardOptions = field.keyboardOptions(),
         )
     }
 }
+
+private fun TrackTagField?.keyboardOptions(): KeyboardOptions =
+    if (this in NUMERIC_FIELDS) {
+        KeyboardOptions(keyboardType = KeyboardType.Number)
+    } else {
+        KeyboardOptions.Default
+    }
 
 @Composable
 private fun EntryPairRow(
@@ -763,6 +774,14 @@ private val PERSON_FIELDS = setOf(
     TrackTagField.ALBUM_ARTIST,
     TrackTagField.LYRICIST,
     TrackTagField.ARRANGER,
+)
+
+private val NUMERIC_FIELDS = setOf(
+    TrackTagField.TRACK_NUMBER,
+    TrackTagField.TRACK_TOTAL,
+    TrackTagField.DISC_NUMBER,
+    TrackTagField.DISC_TOTAL,
+    TrackTagField.RATING,
 )
 private const val TAB_METADATA = 0
 private const val TAB_LYRICS = 1
